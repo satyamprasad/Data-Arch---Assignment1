@@ -1,1 +1,205 @@
+generate synthetic data using faker library for order management for supply chain management use case which is designed for a company which manufactures laptops, servers, peripherals. this data should have the order id quantity make and model, brand, Quantity, Unit Price, Total Price etc
+
+/***23 June****/
+
+
+Making a list parallelized
+rdd = spark.sparkContext.parallelize([1, 2, 3, 4, 5])
+
+#To Show all the elements 
+rdd.collect() 
+
+# First 3 elements
+rdd.take(3)          
+
+# Number of elements
+rdd.count()         
+
+# First element
+rdd.first()          
+
+#Flat Map
+rdd_flatmap = rdd.flatMap(lambda x: (x, x*10))
+rdd_flatmap.collect()
+
+# Reduce to a single value by adding each element of the list 
+rdd.reduce(lambda x, y: x + y)  
+
+#Multiplying every element by 2 or any number and show the result 
+rdd_map = rdd.map(lambda x: x * 2)
+rdd_map.collect()
+
+#Filter list value which is even number
+rdd_filter = rdd.filter(lambda x: x % 2 == 0)
+rdd_filter.collect()
+
+Create a Data Frame:
+
+#Creating Data Frame using range function 
+
+df_range = spark.range(10)  
+df_range.show()
+
+#Creating Data Frame using your dataset and defining the Data Frame and show the result 
+
+data = [("Mark", 35), ("Bob", 25), ("Charlie", 38)]
+df = spark.createDataFrame(data, ["Name", "Age"])
+df.show()
+
+df_selected = df.select("Name")
+df_selected.show()
+
+df_multi_select = df.select("Name", "Age")
+
+df_multi_select.show()
+
+
+from pyspark.sql.functions import col (if you get issue)
+
+# Now your filter command will work 
+df_filtered = df.filter(col("Age") > 1)
+df_filtered.show()
+
+# Using SQL-like syntax
+df_filtered_sql = df.filter("Age > 1")
+df_filtered_sql.show()
+
+#Define a alias
+df_multi_select = df.select(col("Name"), col("Age").alias("YearsOld"))
+df_multi_select.show()
+
+Add a new column:
+from pyspark.sql.functions import lit 
+
+df_with_col = df.withColumn("City", lit("New York"))
+df_with_col.show()
+
+Doing calculation on column:
+
+df_calc_col = df.withColumn("AgeInMonths", col("Age") * 12)
+df_calc_col.show()
+
+Drop a column:
+df_no_age = df.drop("Age")
+df_no_age.show()
+
+Group by and aggregate:
+
+# Assuming df_sales has 'ProductType' and 'Revenue'
+# For our simple df, let's pretend 'Name' is product type and 'Age' is quantity
+
+df_agg = df.groupBy("Name").agg({"Age": "sum"})
+df_agg.show()
+
+from pyspark.sql.functions import sum, avg
+df_agg_multi = df.groupBy("Name").agg(sum("Age").alias("TotalQuantity"), avg("Age").alias("AvgQuantity"))
+df_agg_multi.show()
+
+Sort (Order By):
+df_sorted = df.orderBy("Age", ascending=False)
+df_sorted.show()
+
+#Reading a CSV file (assuming path and file is accessible from Spark):
+df_csv = spark.read.csv("path/to/your/file.csv", header=True, inferSchema=True)
+df_csv.show(5)
+
+df_csv.show() # Shows first 20 rows by default
+df_csv.show(5, truncate=False) # Show first 5 rows, don't truncate long strings
+
+Count rows:
+row_count = df_csv.count()
+print(f"Number of rows: {row_count}")
+
+Collect data (bring to driver as Python list):
+all_data = df_csv.collect()
+for row in all_data:
+    print(row)
+
+(*Use collect() with caution on very large DataFrames, as it brings all data to the driver's memory.)
+Take a sample of rows:
+
+sample_rows = df_csv.take(2)
+print(sample_rows)
+Write to file:
+df.write.csv("my_data_output.csv", header=True, mode="overwrite")
+df.write.parquet("my_data_output.parquet", mode="overwrite")
+
+(mode="overwrite" will overwrite if the directory already exists. These files will be created in very small pieces. How can we make one file?)
+It will create a folder with many files 
+
+
+#Reading a Parquet file:
+df_parquet = spark.read.parquet("path/to/your/data.parquet")
+df_parquet.show(5)
+
+
+When you read this file it will give the proper output so breaking the files will be internal to spark.
+Print schema:
+
+df_parquet.printSchema()
+Describe (summary statistics):
+df.describe().show()
+# Assuming df_csv is your DataFrame
+df_csv.describe().show(truncate=False)
+
+from pyspark.sql.functions import col
+
+# Only describe numeric columns
+df_csv.select("Quantity", "Unit Price", "Total Price").describe().show()
+
+
+pandas_df_description = df_csv.describe().toPandas()
+
+print(pandas_df_description)
+
+Use toPandas() with extreme caution on very large Spark DataFrames, as it pulls ALL data into your driver's memory. However, for the output of describe(), which is usually small (only a few rows), it's generally safe.
+
+
+
+/************************** Spark SQL **************************/
+
+
+Spark SQL is Apache Spark’s module for working with structured data. The SQL Syntax section describes the SQL syntax in detail along with usage examples when applicable. This document provides a list of Data Definition and Data Manipulation Statements, as well as Data Retrieval and Auxiliary Statements.
+DDL Statements
+Data Definition Statements are used to create or modify the structure of database objects in a database. Spark SQL supports the following Data Definition Statements:
+
+CREATE DATABASE
+CREATE FUNCTION
+CREATE TABLE
+CREATE VIEW
+ALTER DATABASE
+ALTER TABLE
+ALTER VIEW
+DECLARE VARIABLE
+DROP DATABASE
+DROP FUNCTION
+DROP TABLE
+DROP TEMPORARY VARIABLE
+DROP VIEW
+REPAIR TABLE
+TRUNCATE TABLE
+USE DATABASE
+DML Statements
+
+Data Manipulation Statements are used to add, change, or delete data. Spark SQL supports the following Data Manipulation Statements:
+INSERT TABLE
+INSERT OVERWRITE DIRECTORY
+LOAD
+
+Data Retrieval StatementsSpark supports 
+
+SELECT statement that is used to retrieve rows from one or more tables according to the specified clauses. The full syntax and brief description of supported clauses are explained in the SELECT section. The SQL statements related to SELECT are also included in this section. Spark also provides the ability to generate logical and physical plan for a given query using EXPLAIN statement.
+
+SELECT Statement
+
+SHOW COLUMNS
+SHOW CREATE TABLE
+SHOW DATABASES
+SHOW FUNCTIONS
+SHOW PARTITIONS
+SHOW TABLE EXTENDED
+SHOW TABLES
+SHOW TBLPROPERTIES
+SHOW VIEWS
+UNCACHE TABLE
 
