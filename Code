@@ -203,3 +203,32 @@ SHOW TBLPROPERTIES
 SHOW VIEWS
 UNCACHE TABLE
 
+*******************************************
+
+Read a text file and count the words it has and print the count on console
+**************************************************************************
+
+from pyspark import SparkContext
+
+# Step 1: Initialize Spark Context
+sc = SparkContext(appName="WordFrequencyCountRDD")
+
+# Step 2: Load the text file
+rdd = sc.textFile("/path/to/your/textfile.txt")  #  Replace with actual file path
+
+# Step 3: Split lines into words
+words = rdd.flatMap(lambda line: line.lower().split())
+
+# Step 4: Map each word to a (word, 1) tuple
+word_pairs = words.map(lambda word: (word, 1))
+
+# Step 5: Reduce by key (sum up all 1s per word
+word_counts = word_pairs.reduceByKey(lambda a, b: a + b)
+
+# Step 6: Collect and print the result
+for word, count in word_counts.collect():
+    print(f"{word}: {count}")
+
+
+# Step 7: Stop Spark context
+sc.stop()
