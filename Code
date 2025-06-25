@@ -232,3 +232,57 @@ for word, count in word_counts.collect():
 
 # Step 7: Stop Spark context
 sc.stop()
+
+from pyspark.sql import SparkSession, Row
+
+# Step 1: Start Spark session
+spark = SparkSession.builder.appName("WordCountWithStopwords").getOrCreate()
+sc = spark.sparkContext
+
+# Step 2: Define stopwords (you can expand this list)
+stopwords = {"to", "if", "the", "in", "for", "and", "on", "be", "a", "an", "of", "with", "at", "by", "is", "it", "this"}
+
+# Step 3: Read input text file
+rdd = sc.textFile("/Users/alokranjan/input.txt")
+
+# Step 4: Tokenize and clean
+words = rdd.flatMap(lambda line: line.lower().split()) \
+           .filter(lambda word: word.isalpha() and word not in stopwords)
+
+# Step 5: Word count
+word_counts = words.map(lambda word: (word, 1)) \
+                   .reduceByKey(lambda a, b: a + b)
+
+# Step 6: Convert to DataFrame
+word_df = word_counts.map(lambda x: Row(word=x[0], count=x[1])).toDF()
+
+# Optional: Show result
+word_df.orderBy("count", ascending=False).show(20)
+
+# Optional: Save to file
+word_df.write.mode("overwrite").option("header", True).csv("/Users/alokranjan/cleaned_word_count_csv")
+
+# Step 7: Stop Spark session
+spark.stop()
+
+*****************************************************************
+Plot a histogram 
+*****************************************************************
+import matplotlib.pyplot as plt
+
+# Convert Spark DataFrame to Pandas
+pandas_df = word_df.toPandas()
+
+# Sort by count (optional)
+pandas_df = pandas_df.sort_values(by="count", ascending=False)
+
+# Plot histogram
+plt.figure(figsize=(10, 6))
+plt.bar(pandas_df["word"], pandas_df["count"], color='skyblue')
+plt.xlabel("Words")	
+plt.ylabel("Frequency")
+plt.title("Word Frequency Histogram")
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
