@@ -1,0 +1,231 @@
+**Project Nessie** is an open-source data lake catalog and version control system. It provides Git-like semantics (branches, tags, commits) for data lakes, allowing you to manage, track, and isolate changes to your data over time.
+
+### Key Features:
+- **Data Versioning:** Track changes to tables, schemas, and data in your data lake.
+- **Branching & Tagging:** Create isolated branches for experimentation or development, and tag important versions.
+- **Atomic Operations:** Ensure consistent and reliable data operations.
+- **Integration:** Works with Apache Iceberg, Delta Lake, Apache Spark, Trino, Presto, and other data lake technologies.
+
+### Use Cases:
+- Safe experimentation with data without affecting production.
+- Rollback to previous data states.
+- Collaborative data engineering workflows.
+
+### Example Usage:
+You can use Nessie via its REST API, CLI, or integrations with supported engines. For example, with Apache Iceberg:
+
+````bash
+spark-shell --conf spark.sql.catalog.nessie.uri=http://localhost:19120/api/v1
+````
+
+**Website:** [https://projectnessie.org/](https://projectnessie.org/)
+
+**Polaris** at Databricks refers to their next-generation, high-performance query engine designed to power Databricks SQL. It is built to deliver fast, reliable, and scalable analytics on large datasets.
+
+### Key Points about Polaris (Databricks):
+
+- **Performance:** Polaris is optimized for low-latency, high-throughput SQL queries on the Databricks Lakehouse Platform.
+- **Compatibility:** It supports ANSI SQL and is designed to work seamlessly with Delta Lake, Databricks’ open-source storage layer.
+- **Architecture:** Polaris uses a distributed, vectorized execution engine, leveraging modern hardware for efficient query processing.
+- **Concurrency:** Built to handle thousands of concurrent users and queries, making it suitable for enterprise-scale analytics.
+- **Integration:** Powers Databricks SQL endpoints and BI dashboards, enabling interactive analytics and reporting.
+
+**Note:** Polaris is not a standalone open-source project; it is a core component of the Databricks platform, available to Databricks customers.
+
+For more details, see the [Databricks documentation](https://docs.databricks.com/en/sql/index.html) or recent Databricks announcements.
+
+**LakeFS** is an open-source data version control system for object storage-based data lakes (such as Amazon S3, Google Cloud Storage, or Azure Blob Storage). It brings Git-like operations—such as branching, committing, and merging—to data lakes, enabling safe experimentation, reproducibility, and collaboration on large datasets.
+
+---
+
+### Key Features
+
+- **Git-like Versioning:** Create branches, commit changes, and merge data just like with source code.
+- **Atomic Operations:** Make changes to large datasets atomically, reducing risk of partial updates.
+- **Isolation:** Experiment with data in isolated branches without affecting production data.
+- **Reproducibility:** Easily reproduce data states for debugging, auditing, or machine learning experiments.
+- **Integration:** Works with Spark, Presto, Trino, Hive, and other data processing engines.
+
+---
+
+### Example Workflow
+
+1. **Create a Branch:**  
+   Create a new branch for experimentation.
+2. **Process Data:**  
+   Run ETL or ML jobs on the branch.
+3. **Commit Changes:**  
+   Commit the results to the branch.
+4. **Merge:**  
+   Merge the branch into main when ready.
+
+---
+
+### Example CLI Commands
+
+````bash
+lakefs branch create experiment main
+lakefs commit experiment --message "Processed new data"
+lakefs merge experiment main
+````
+
+---
+
+**Website:** [https://lakefs.io/](https://lakefs.io/)  
+**GitHub:** [https://github.com/treeverse/lakeFS](https://github.com/treeverse/lakeFS)
+
+Let me know if you want setup instructions or integration examples!
+
+
+**Dolt** is an open-source SQL database with built-in Git-like version control features. It allows you to branch, merge, diff, and clone your data, just like you would with source code in Git. Dolt is designed for collaborative data workflows, enabling teams to track changes, experiment safely, and audit data history.
+
+---
+
+### Key Features
+
+- **Git-like Operations:** Branch, merge, diff, and clone entire databases.
+- **SQL Support:** Full-featured SQL database engine.
+- **Data Collaboration:** Multiple users can work on different branches and merge changes.
+- **Auditability:** Every change is tracked and can be reviewed or reverted.
+- **Data Provenance:** See who changed what and when.
+
+---
+
+### Example Use Cases
+
+- Collaborative data curation and cleaning.
+- Data versioning for machine learning datasets.
+- Auditable data pipelines.
+- Experimentation with data without affecting production.
+
+---
+
+### Example CLI Commands
+
+````bash
+dolt clone dolthub/my-database
+dolt checkout -b new-feature
+dolt sql -q "INSERT INTO my_table VALUES (1, 'example')"
+dolt commit -am "Added new row"
+dolt diff main new-feature
+dolt merge new-feature
+````
+
+---
+
+**Website:** [https://www.dolthub.com/](https://www.dolthub.com/)  
+**GitHub:** [https://github.com/dolthub/dolt](https://github.com/dolthub/dolt)
+
+Let me know if you want more details or examples!
+
+**Dataplex** is a fully managed data governance and data lake management service on Google Cloud. It helps organizations organize, secure, catalog, and manage data across data lakes, data warehouses, and other storage systems.
+
+---
+
+### Key Features
+
+- **Unified Data Management:** Organize data across Google Cloud Storage, BigQuery, and other sources into logical data lakes and zones.
+- **Data Cataloging:** Automatically discovers, catalogs, and classifies data assets for easy search and discovery.
+- **Data Governance:** Centralized policy management for access control, data quality, and compliance.
+- **Data Lineage:** Track data movement and transformations for better auditing and troubleshooting.
+- **Integration:** Works seamlessly with Google Cloud analytics and AI tools.
+
+---
+
+### Typical Use Cases
+
+- Building secure, governed data lakes.
+- Enabling data discovery and self-service analytics.
+- Ensuring compliance and data quality across cloud data assets.
+
+---
+
+**Documentation:**  
+[https://cloud.google.com/dataplex/docs](https://cloud.google.com/dataplex/docs)
+
+Let me know if you need setup steps or integration examples!
+
+**Collibra** is an enterprise data intelligence and data catalog platform designed to help organizations discover, govern, and manage their data assets. It provides a centralized solution for data cataloging, governance, privacy, and quality, enabling better data-driven decision-making and regulatory compliance.
+
+---
+
+### Key Features
+
+- **Data Catalog:** Centralized inventory for discovering and organizing data assets across the organization.
+- **Data Governance:** Tools for defining policies, stewardship, and workflows to ensure data compliance and accountability.
+- **Data Lineage:** Visualize data flow and transformations for transparency and auditing.
+- **Data Quality:** Monitor and improve the accuracy, completeness, and reliability of data.
+- **Collaboration:** Supports business glossaries, stewardship, and collaboration among data users.
+
+---
+
+### Typical Use Cases
+
+- Regulatory compliance (GDPR, CCPA, etc.)
+- Data discovery and self-service analytics
+- Data quality management
+- Data governance and stewardship
+
+---
+
+**Website:**  
+[https://www.collibra.com/](https://www.collibra.com/)
+
+Let me know if you need more details or a comparison with other data catalog tools!
+
+**Alation** is a leading enterprise data catalog platform that helps organizations discover, understand, govern, and collaborate on their data assets. It is designed to improve data searchability, data governance, and data literacy across an organization.
+
+---
+
+### Key Features
+
+- **Data Catalog:** Centralized inventory for all data assets, making it easy to find and understand data.
+- **Data Governance:** Tools for policy management, stewardship, and compliance.
+- **Collaboration:** Supports annotations, discussions, and sharing of data knowledge among users.
+- **Data Lineage:** Visualizes how data moves and transforms across systems.
+- **Search & Discovery:** Powerful search capabilities with natural language support.
+- **Integration:** Connects to a wide range of databases, data warehouses, BI tools, and cloud platforms.
+
+---
+
+### Typical Use Cases
+
+- Enabling self-service analytics and business intelligence.
+- Improving data governance and regulatory compliance.
+- Enhancing data literacy and collaboration across teams.
+
+---
+
+**Website:**  
+[https://www.alation.com/](https://www.alation.com/)
+
+Let me know if you want more details or a comparison with other data catalog tools!
+
+**Apache Atlas** is an open-source metadata management and data governance platform, primarily used in big data ecosystems such as Apache Hadoop and Apache Hive. It helps organizations manage, classify, and govern their data assets by providing a central repository for metadata and supporting data governance processes.
+
+---
+
+### Key Features
+
+- **Metadata Management:** Catalogs technical and business metadata for data assets across the data ecosystem.
+- **Data Lineage:** Tracks the origin and movement of data, showing how data flows and transforms across systems.
+- **Data Classification:** Supports tagging and classification of data for compliance and security.
+- **Search & Discovery:** Enables users to search and discover data assets using metadata.
+- **Policy Management:** Facilitates data governance by defining and enforcing policies for data access and usage.
+- **Integration:** Works with Hadoop, Hive, HBase, Kafka, and other big data tools.
+
+---
+
+### Typical Use Cases
+
+- Regulatory compliance (GDPR, HIPAA, etc.)
+- Data discovery and cataloging in big data environments
+- Data lineage tracking for auditing and troubleshooting
+- Data governance and stewardship
+
+---
+
+**Website:**  
+[https://atlas.apache.org/](https://atlas.apache.org/)
+
+Let me know if you need setup instructions or integration examples!
