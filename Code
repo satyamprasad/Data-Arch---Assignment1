@@ -286,3 +286,196 @@ plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
 plt.show()
 
+##############################2/7########################################
+/*************************. Install MongoDB on Ubuntu ***************************
+
+  cat /etc/lsb-release
+  sudo apt-get install gnupg curl (Not required)
+ 	
+  curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+ 
+   echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+   
+   sudo apt-get update
+   
+   sudo apt-get install -y mongodb-org
+
+sudo systemctl start mongod
+
+sudo systemctl daemon-reload
+
+sudo systemctl status mongod
+
+sudo systemctl enable mongod
+
+sudo systemctl restart mongod
+
+mongosh
+
+help
+db.help()
+db.tablename.help
+db. (tab tab)
+dp.tablename. (tab tab)
+
+
+db.createCollection("incidents");
+
+db.incidents.insert({_id:1, name:"Server Issue"});
+db.incidents.insert({_id:2, name:"DB Issue"});
+db.incidents.insert({_id:3, name:"Application Issue"});
+
+
+db.createCollection("databases");
+
+db.incidents.insert({name:"XYZ Issue"});
+db.incidents.insert({name:"ABCD Issue"});
+db.incidents.insert({name:"MNOP Issue"});
+
+
+show tables;
+
+#Json Object
+
+Student Collection (Table) 
+
+{
+name: "Srinivas",
+email: "sriniwas@gmail.com",
+mob:9999999999,
+salary: 111111,
+depart:"IT Support"
+}
+
+
+db.student.insert({
+name: "Sivas",
+email: "sriniwas@gmail.com",
+mob:9999999999,
+salary: 111111,
+depart:"IT Support"
+});
+
+
+;
+
+
+db.student.insert({
+name: "Srinivas",
+email:
+{
+personal_email: "xyz@gmail.com",
+professional_email:"srinivas@dell.com",
+temp_email: "temp@dell.com"
+},
+mob:
+{
+personal:111111111111,
+professional:22222222,
+temporary: 3333333333
+},
+salary: 111111,
+depart:"IT Support"
+});
+
+db.student.find();
+
+
+
+/******************** Install Neo4J Graph DB on ubuntu *****************************/
+
+
+
+
+sudo apt-get update && sudo apt-get upgrade -y
+
+sudo apt-get install wget curl nano software-properties-common dirmngr apt-transport-https gnupg gnupg2 ca-certificates lsb-release ubuntu-keyring unzip -y
+
+curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/neo4j.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/neo4j.gpg] https://debian.neo4j.com stable latest" | sudo tee -a /etc/apt/sources.list.d/neo4j.list
+
+sudo apt-get update
+
+sudo apt-get install neo4j -y
+
+sudo systemctl enable --now neo4j
+
+sudo nano /etc/neo4j/neo4j.conf
+
+In that file, look for the following line:
+
+#server.default_listen_address=0.0.0.0
+
+Remove the #, so the line now reads:
+
+server.default_listen_address=0.0.0.0
+
+Save and close the file with the CTRL+X keyboard shortcut. Restart the Neo4j service with:
+
+sudo systemctl restart neo4j
+
+You must also edit the system hosts file. To do that, issue the command:
+
+sudo nano /etc/hosts
+
+At the bottom of the file, add a line like this:
+
+SERVER_IP HOSTNAME
+
+Where SERVER_IP is the IP address of the hosting server and HOSTNAME is the hostname of the machine. Save and close the file. For example, if your IP address is 192.168.1.7 and your hostname is fossa, the line would be:
+
+192.168.1.7 fossa
+
+How to test the Neo4j connection
+To test the Neo4j connection, the command would look something like this:
+
+cypher-shell -a 'neo4j://192.168.1.7:7687'
+
+Both the default username and password are neo4j. After typing the default password, you’ll be prompted to create a new one. Once you’ve done that, you’ll find yourself at the Neo4j console.
+
+If the connection fails, you might have to open the firewall on the server. To do that, you’ll also want to know the IP address of any machine that will connect to the server. For example, if you’re connecting from IP address 192.168.1.100, you could open the firewall with the command:
+
+sudo ufw allow from 192.168.1.62 to any port 7687 proto tcp
+
+If you want to open the connection to any machine on your network, that command might look like this:
+
+sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp
+
+
+
+/************************ Install Cassandra *************************/
+
+java -version
+
+sudo apt install apt-transport-https
+
+wget -qO- https://downloads.apache.org/cassandra/KEYS | sudo apt-key add -
+
+echo "deb https://debian.cassandra.apache.org 41x main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+
+sudo apt update
+
+sudo apt install cassandra -y
+
+sudo apt install cassandra -y
+
+sudo systemctl start cassandra
+
+sudo systemctl restart cassandra
+
+sudo systemctl stop cassandra
+
+sudo systemctl start cassandra
+
+
+cqlsh
+help
+cqlsh --help				Shows help topics about the options of cqlsh commands.
+cqlsh --version			Provides the version of the cqlsh you are using.
+cqlsh --color				Directs the shell to use colored output.
+cqlsh --debug				Shows additional debugging information.
+cqlsh --execute
+
+cql_statement
+
