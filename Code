@@ -479,3 +479,419 @@ cqlsh --execute
 
 cql_statement
 
+
+/**************************************4/7****************************************************/
+curl -fsSL https://pgp.mongodb.com/server-8.0.pub | gpg --dearmor | sudo tee /usr/share/keyrings/mongodb-server-8.0.gpg > /dev/null
+/*************************. Install MongoDB on Ubuntu ***************************
+
+cat /etc/lsb-release //ubuntu version
+sudo apt-get install gnupg curl (Not required)
+ 	
+curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+   
+sudo apt-get update
+   
+sudo apt-get install -y mongodb-org
+
+sudo systemctl start mongod
+
+sudo systemctl daemon-reload
+
+sudo systemctl status mongod
+
+sudo systemctl enable mongod
+
+sudo systemctl restart mongod
+
+mongosh
+
+help
+db.help()
+db.tablename.help
+db. (tab tab)
+dp.tablename. (tab tab)
+
+
+db.createCollection("incidents");
+
+db.incidents.insert({_id:1, name:"Server Issue"});
+db.incidents.insert({_id:2, name:"DB Issue"});
+db.incidents.insert({_id:3, name:"Application Issue"});
+
+
+db.createCollection("databases");
+
+db.incidents.insert({name:"XYZ Issue"});
+db.incidents.insert({name:"ABCD Issue"});
+db.incidents.insert({name:"MNOP Issue"});
+
+
+show tables;
+
+#Json Object
+
+Student Collection (Table) 
+{
+name: "Srinivas",
+email: "sriniwas@gmail.com",
+mob:9999999999,
+salary: 111111,
+depart:"IT Support"
+}
+
+
+db.student.insert({
+name: "Sriniwas",
+email: "sriniwas@gmail.com",
+mob:9999999999,
+salary: 111111,
+depart:"IT Support"
+});
+
+
+;
+
+
+db.student.insert({
+name: "Srinivas",
+email:
+{
+personal_email: "xyz@gmail.com",
+professional_email:"srinivas@dell.com",
+temp_email: "temp@dell.com"
+},
+mob:
+{
+personal:111111111111,
+professional:22222222,
+temporary: 3333333333
+},
+salary: 111111,
+depart:"IT Support"
+});
+
+db.student.find();
+
+
+
+/******************** Install Neo4J Graph DB on ubuntu *****************************/
+
+
+sudo apt-get update && sudo apt-get upgrade -y
+
+sudo apt-get install wget curl nano software-properties-common dirmngr apt-transport-https gnupg gnupg2 ca-certificates lsb-release ubuntu-keyring unzip -y
+
+curl -fsSL https://debian.neo4j.com/neotechnology.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/neo4j.gpg	
+
+echo "deb [signed-by=/usr/share/keyrings/neo4j.gpg] https://debian.neo4j.com stable latest" | sudo tee -a /etc/apt/sources.list.d/neo4j.list
+
+sudo apt-get update
+
+sudo apt-get install neo4j -y
+
+      sudo systemctl enable --now neo4j
+
+sudo nano /etc/neo4j/neo4j.conf
+
+In that file, look for the following line:
+
+#server.default_listen_address=0.0.0.0
+
+Remove the #, so the line now reads:
+exit
+server.default_listen_address=0.0.0.0
+
+Save and close the file with the CTRL+X keyboard shortcut. Restart the Neo4j service with:
+
+sudo systemctl restart neo4j
+
+You must also edit the system hosts file. To do that, issue the command:
+
+sudo nano /etc/hosts
+
+At the bottom of the file, add a line like this:
+
+SERVER_IP HOSTNAME
+
+If you get the Java version issue please exposrt the compatible java version
+JAVA_HOME=/usr/lib/jvm/java-1.21.0-openjdk-amd64 
+
+
+Where SERVER_IP is the IP address of the hosting server and HOSTNAME is the hostname of the machine. Save and close the file. For example, if your IP address is 192.168.1.7 and your hostname is fossa, the line would be:
+for eg 192.168.1.7 fossa
+
+use command 
+hostname (to check the host name)
+
+How to test the Neo4j connection
+To test the Neo4j connection, the command would look something like this:
+
+cypher-shell -a 'neo4j://192.168.1.7:7687' (IP address of machine you have installed it)
+
+Both the default username and password are neo4j. After typing the default password, you’ll be prompted to create a new one. Once you’ve done that, you’ll find yourself at the Neo4j console.
+
+If the connection fails, you might have to open the firewall on the server. To do that, you’ll also want to know the IP address of any machine that will connect to the server. For example, if you’re connecting from IP address 192.168.1.100, you could open the firewall with the command:
+
+sudo ufw allow from 192.168.1.62 to any port 7687 proto tcp
+
+If you want to open the connection to any machine on your network, that command might look like this:
+
+sudo ufw allow from 192.168.1.0/24 to any port 7687 proto tcp
+
+
+
+/************************ Install Cassandra *************************/
+
+java -version
+
+sudo apt install apt-transport-https
+
+wget -qO- https://downloads.apache.org/cassandra/KEYS | sudo apt-key add -
+
+echo "deb https://debian.cassandra.apache.org 41x main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+
+sudo apt update
+
+sudo apt install cassandra -y
+
+sudo systemctl start cassandra
+
+sudo systemctl restart cassandra
+
+sudo systemctl stop cassandra
+
+sudo systemctl start cassandra
+
+----------------
+| Command                 | Purpose                             |                                     |                          |
+| ----------------------- | ----------------------------------- | ----------------------------------- | ------------------------ |
+| `java -version`         | Check Java version                  |                                     |                          |
+| `apt-transport-https`   | Enable secure package download      |                                     |                          |
+| `apt-key add`           | Trust Cassandra’s software packages |                                     |                          |
+| \`echo …                | tee\`                               | Add Cassandra’s repo to your system |                          |
+| `apt update`            | Refresh available software          |                                     |                          |
+| `apt install cassandra` | Install Cassandra                   |                                     |                          |
+| \`systemctl start       | restart                             | stop\`                              | Manage Cassandra service |
+----------------
+
+
+cqlsh
+help
+cqlsh --help				Shows help topics about the options of cqlsh commands.
+cqlsh --version			Provides the version of the cqlsh you are using.
+cqlsh --color				Directs the shell to use colored output.
+cqlsh --debug				Shows additional debugging information.
+cqlsh --execute
+
+cql_statement
+
+-- Create a Keyspace
+
+CREATE KEYSPACE mykeyspace 
+WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+-- Use the Keyspace
+USE mykeyspace;
+
+-- Create a Table
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  email TEXT,
+  age INT
+);
+
+INSERT INTO users (id, name, email, age)
+VALUES (uuid(), 'John Doe', 'john@example.com', 30);
+
+-- Get all rows
+SELECT * FROM users;
+
+-- Get by ID (replace UUID with actual ID)
+SELECT * FROM users WHERE id = 2b5b1ae0-4c93-11ee-be56-0242ac120002; (Check you ID)
+
+UPDATE users 
+SET age = 31 
+WHERE id = 2b5b1ae0-4c93-11ee-be56-0242ac120002;
+
+-- Delete a specific row
+DELETE FROM users 
+WHERE id = 2b5b1ae0-4c93-11ee-be56-0242ac120002;
+
+--------------
+uuid() is a built-in function to generate a random UUID.
+
+In Cassandra, you must specify the full primary key in WHERE clauses for update and delete.
+
+Tables in Cassandra are denormalized and write-optimized, so structure them based on query patterns.
+
+*************************. Install Redis on Ubuntu ***************************
+  
+sudo apt-get install lsb-release curl gpg
+curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
+sudo apt-get update
+sudo apt-get install redis
+sudo apt install redis-serve	r
+redis-cli
+  
+  PING
+  SET mykey somevalue
+  GET mykey
+  ACL CAT
+  INFO SERVER
+  5 INCR mycounter
+  
+
+
+redis>JSON.SET doc $ '{"a":2}'
+redis> JSON.SET doc $.a '3'
+redis> JSON.SET doc $ '{"f1": {"a":1}, "f2":{"a":2}}'
+OK
+redis> JSON.SET doc $..a 3
+OK
+redis> JSON.GET doc"{\"f1\":{\"a\":3},\"f2\":{\"a\":3}}"
+
+
+JSON.SET "bicycle:0" "." "{\"brand\": \"Velorim\", \"model\": \"Jigger\", \"price\": 270, \"description\": \"Small and powerful, the Jigger is the best ride for the smallest of tikes! This is the tiniest kids\\u2019 pedal bike on the market available without a coaster brake, the Jigger is the vehicle of choice for the rare tenacious little rider raring to go.\", \"condition\": \"new\"}"
+JSON.SET "bicycle:1" "." "{\"brand\": \"Bicyk\", \"model\": \"Hillcraft\", \"price\": 1200, \"description\": \"Kids want to ride with as little weight as possible. Especially on an incline! They may be at the age when a 27.5\\\" wheel bike is just too clumsy coming off a 24\\\" bike. The Hillcraft 26 is just the solution they need!\", \"condition\": \"used\"}"
+JSON.SET "bicycle:2" "." "{\"brand\": \"Nord\", \"model\": \"Chook air 5\", \"price\": 815, \"description\": \"The Chook Air 5  gives kids aged six years and older a durable and uberlight mountain bike for their first experience on tracks and easy cruising through forests and fields. The lower  top tube makes it easy to mount and dismount in any situation, giving your kids greater safety on the trails.\", \"condition\": \"used\"}"
+JSON.SET "bicycle:3" "." "{\"brand\": \"Eva\", \"model\": \"Eva 291\", \"price\": 3400, \"description\": \"The sister company to Nord, Eva launched in 2005 as the first and only women-dedicated bicycle brand. Designed by women for women, allEva bikes are optimized for the feminine physique using analytics from a body metrics database. If you like 29ers, try the Eva 291. It\\u2019s a brand new bike for 2022.. This full-suspension, cross-country ride has been designed for velocity. The 291 has 100mm of front and rear travel, a superlight aluminum frame and fast-rolling 29-inch wheels. Yippee!\", \"condition\": \"used\"}"
+JSON.SET "bicycle:4" "." "{\"brand\": \"Noka Bikes\", \"model\": \"Kahuna\", \"price\": 3200, \"description\": \"Whether you want to try your hand at XC racing or are looking for a lively trail bike that's just as inspiring on the climbs as it is over rougher ground, the Wilder is one heck of a bike built specifically for short women. Both the frames and components have been tweaked to include a women\\u2019s saddle, different bars and unique colourway.\", \"condition\": \"used\"}"
+JSON.SET "bicycle:5" "." "{\"brand\": \"Breakout\", \"model\": \"XBN 2.1 Alloy\", \"price\": 810, \"description\": \"The XBN 2.1 Alloy is our entry-level road bike \\u2013 but that\\u2019s not to say that it\\u2019s a basic machine. With an internal weld aluminium frame, a full carbon fork, and the slick-shifting Claris gears from Shimano\\u2019s, this is a bike which doesn\\u2019t break the bank and delivers craved performance.\", \"condition\": \"new\"}"
+JSON.SET "bicycle:6" "." "{\"brand\": \"ScramBikes\", \"model\": \"WattBike\", \"price\": 2300, \"description\": \"The WattBike is the best e-bike for people who still feel young at heart. It has a Bafang 1000W mid-drive system and a 48V 17.5AH Samsung Lithium-Ion battery, allowing you to ride for more than 60 miles on one charge. It\\u2019s great for tackling hilly terrain or if you just fancy a more leisurely ride. With three working modes, you can choose between E-bike, assisted bicycle, and normal bike modes.\", \"condition\": \"new\"}"
+JSON.SET "bicycle:7" "." "{\"brand\": \"Peaknetic\", \"model\": \"Secto\", \"price\": 430, \"description\": \"If you struggle with stiff fingers or a kinked neck or back after a few minutes on the road, this lightweight, aluminum bike alleviates those issues and allows you to enjoy the ride. From the ergonomic grips to the lumbar-supporting seat position, the Roll Low-Entry offers incredible comfort. The rear-inclined seat tube facilitates stability by allowing you to put a foot on the ground to balance at a stop, and the low step-over frame makes it accessible for all ability and mobility levels. The saddle is very soft, with a wide back to support your hip joints and a cutout in the center to redistribute that pressure. Rim brakes deliver satisfactory braking control, and the wide tires provide a smooth, stable ride on paved roads and gravel. Rack and fender mounts facilitate setting up the Roll Low-Entry as your preferred commuter, and the BMX-like handlebar offers space for mounting a flashlight, bell, or phone holder.\", \"condition\": \"new\"}"
+JSON.SET "bicycle:8" "." "{\"brand\": \"nHill\", \"model\": \"Summit\", \"price\": 1200, \"description\": \"This budget mountain bike from nHill performs well both on bike paths and on the trail. The fork with 100mm of travel absorbs rough terrain. Fat Kenda Booster tires give you grip in corners and on wet trails. The Shimano Tourney drivetrain offered enough gears for finding a comfortable pace to ride uphill, and the Tektro hydraulic disc brakes break smoothly. Whether you want an affordable bike that you can take to work, but also take trail in mountains on the weekends or you\\u2019re just after a stable, comfortable ride for the bike path, the Summit gives a good value for money.\", \"condition\": \"new\"}"
+JSON.SET "bicycle:9" "." "{\"model\": \"ThrillCycle\", \"brand\": \"BikeShind\", \"price\": 815, \"description\": \"An artsy,  retro-inspired bicycle that\\u2019s as functional as it is pretty: The ThrillCycle steel frame offers a smooth ride. A 9-speed drivetrain has enough gears for coasting in the city, but we wouldn\\u2019t suggest taking it to the mountains. Fenders protect you from mud, and a rear basket lets you transport groceries, flowers and books. The ThrillCycle comes with a limited lifetime warranty, so this little guy will last you long past graduation.\", \"condition\": \"refurbished\"}"
+
+
+KEYS *
+
+keys d??
+
+keys *t*
+
+KEYS "prefix:*"
+
+
+MSET firstname Jack lastname Stuntman age 35
+KEYS *name*
+KEYS a??
+KEYS *
+
+Redis databases are numbered from 0 to 15 and, 
+by default, you connect to database 0 when you connect to your Redis instance. 
+However, you can change the database you’re using with the select command after you connect:
+
+To swap all the data held in one database with the data held in another, use the swapdb command. 
+The following example will swap the data held in database 6 with the data in database 8, and any clients connected to either database 
+will be able to implement changes immediately:
+
+swapdb 6 8
+
+There are a number of Redis commands that are useful for managing keys regardless of what type of data they hold. Some of these commands are reviewed in the following section.
+
+
+rename old_key new_key
+
+You can use randomkey to return a random key from the currently selected database:
+
+randomkey
+
+
+
+Deleting Keys
+To delete one or more keys of any data type, use the del command followed by one or more keys that you want to delete:
+
+del key_1 key_2
+
+To delete all the keys in the selected database, use the flushdb command:
+
+
+flushdb
+
+To delete all the keys in every database on a Redis server (including the currently selected database), run flushall:
+
+flushall
+
+Backing Up Your Database
+To create a backup of the currently selected database, you can use the save command:
+
+save
+
+shutdown
+shutdown save
+shutdown nosave
+
+
+
+Treat a list like a queue (first in, first out):
+
+> LPUSH bikes:repairs bike:1
+> LPUSH bikes:repairs bike:2
+> RPOP bikes:repairs
+> RPOP bikes:repairs
+
+
+> LPUSH bikes:repairs bike:1
+> LPUSH bikes:repairs bike:2
+> LPOP bikes:repairs
+> LPOP bikes:repairs
+
+> LLEN bikes:repairs
+> LPUSH bikes:repairs bike:1
+> LPUSH bikes:repairs bike:2
+> LMOVE bikes:repairs bikes:finished LEFT LEFT
+> LRANGE bikes:repairs 0 -1
+> LRANGE bikes:finished 0 -1
+
+
+> LPUSH bikes:repairs bike:1
+> LPUSH bikes:repairs bike:2
+> LMOVE bikes:repairs bikes:finished LEFT LEFT
+> LRANGE bikes:repairs 0 -1
+> LRANGE bikes:finished 0 -1
+
+
+> RPUSH bikes:repairs bike:1
+> RPUSH bikes:repairs bike:2
+> LPUSH bikes:repairs bike:important_bike
+> LRANGE bikes:repairs 0 -1
+
+******************************************* Docker *******************************************
+
+To check if Docker is installed on your local Ubuntu OS, open the terminal and run:
+
+docker --version
+
+To see the containers currently running on Docker, use the following command in your terminal:
+
+docker ps
+
+docker ps -a
+
+
+| Command                         | Description                        |
+| ------------------------------- | ---------------------------------- |
+| `sudo systemctl start docker`   | Starts Docker service              |
+| `sudo systemctl restart docker` | Restarts Docker service            |
+| `sudo systemctl status docker`  | Shows Docker service status        |
+| `sudo systemctl disable docker` | Disables Docker from auto-starting |
+| `sudo systemctl enable docker`  | Enables Docker to start on boot    |
+
+sudo systemctl status docker
+
+--To come out press Ctl + C
+--If Docker is not running 
+
+sudo systemctl start docker
+
+---sudo systemctl restart docker
+
+---sudo systemctl disable docker
+---sudo systemctl enable docker
+
+
