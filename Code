@@ -895,3 +895,189 @@ sudo systemctl start docker
 ---sudo systemctl enable docker
 
 
+/********************************************************7/7*********************************************/
+On Ubuntu 
+
+Go to spark directory 
+
+cd spark 
+
+Check the current working directory 
+
+pwd
+
+output: /home/ubuntu/spark
+
+# Download the iceberg compatible with Spark version we have spark 3.5.6 in the lab 
+
+wget https://repo.maven.apache.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.5.0/iceberg-spark-runtime-3.5_2.12-1.5.0.jar
+
+# Check if the Iceberg is downloaded 
+
+ls -lh iceberg-spark-runtime-3.5_2.12-1.5.0.jar
+-rw-rw-r-- 1 ubuntu ubuntu 40M Mar  5  2024 iceberg-spark-runtime-3.5_2.12-1.5.0.jar
+
+If you get any issue change the mode of the iceberg jar
+
+chmod 777 iceberg-spark-runtime-3.5_2.12-1.5.0.jar 
+
+This will set the hadoop as catalog 
+  
+------
+
+spark-sql \
+  --jars /home/ubuntu/spark/iceberg-spark-runtime-3.5_2.12-1.5.0.jar \
+  --conf spark.sql.catalog.iceberg_catalog=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.iceberg_catalog.type=hadoop \
+  --conf spark.sql.catalog.iceberg_catalog.warehouse=file:///home/ubuntu/spark/warehouse \
+  --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+
+  
+# The warnings you’re seeing are common and non-blocking in most local setups.
+
+#you would get the prompt: spark-sql (default)>
+
+# How to create a databases?
+
+create database mydb;
+use mydb;
+
+# How to list databases?
+
+show databases;
+
+
+
+Create a table:
+
+CREATE TABLE spark_catalog.default.employee (
+  id INT,
+  name STRING,
+  department STRING,
+  salary INT
+)
+USING iceberg;
+
+INSERT INTO spark_catalog.default.employee VALUES
+  (201, 'Anya', 'HR', 75000),
+  (202, 'Ben', 'Finance', 82000),
+  (203, 'Cara', 'Engineering', 95000);
+
+
+SELECT * FROM spark_catalog.default.employee;
+
+UPDATE spark_catalog.default.employee
+SET salary = salary + 10000
+WHERE department = 'Engineering';
+
+#check if the changes have taken place 
+
+SELECT * FROM spark_catalog.default.employee;
+
+
+DELETE FROM spark_catalog.default.employee
+WHERE department = 'HR';
+
+Check if HR is deleted 
+SELECT * FROM spark_catalog.default.employee;
+
+
+#SELECT * FROM spark_catalog.default.employee WHERE salary > 80000;
+
+#First, check all snapshots:
+
+CALL spark_catalog.system.snapshots('default.employee');
+
+#if it does not work try the below if the call function is not found 
+
+spark-sql (default)> SELECT * FROM iceberg_catalog.default.employee.snapshots;
+
+#Output will be 
+*********************
+2025-07-05 13:50:44.071	554849194851258724	NULL	append	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-554849194851258724-1-cca1a627-b9f5-488b-a81e-c1296bc0cd2e.avro	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:01:49.186	3033299854398411860	554849194851258724	overwrite	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-3033299854398411860-1-b3be4655-9161-46b6-a528-3b45d0b38721.avro	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:04:21.535	5308826326954041526	3033299854398411860	delete	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-5308826326954041526-1-772cbe65-d8ea-4785-a4d0-50edeb4f2cc5.avro	{"changed-partition-count":"1","deleted-data-files":"1","deleted-records":"1","removed-files-size":"1072","spark.app.id":"local-1751721654277","total-data-files":"1","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"1147","total-position-deletes":"0","total-records":"2"}
+Time taken: 0.334 seconds, Fetched 3 row(s)
+
+Explanation of output: 
+
+| **Timestamp**         | **Snapshot ID**       | **Operation** | **Parent**            | **What Happened**                        |
+| --------------------- | --------------------- | ------------- | --------------------- | ---------------------------------------- |
+| `2025-07-05 13:50:44` | `554849194851258724`  | `append`      | `NULL`                | Added 3 records in 2 data files          |
+| `2025-07-05 14:01:49` | `3033299854398411860` | `overwrite`   | `554849194851258724`  | Removed 1 data file, added 2 new records |
+| `2025-07-05 14:04:21` | `5308826326954041526` | `delete`      | `3033299854398411860` | Deleted 1 record and 1 data file         |
+**********************
+#Query a past snapshot
+
+SELECT * FROM iceberg_catalog.default.employee 
+VERSION AS OF 3033299854398411860;
+
+********************** the output shows all the records but we had deleted the employee HR**********
+
+202	Ben	Finance	82000
+203	Cara	Engineering	105000
+201	Anya	HR	75000
+Time taken: 1.019 seconds, Fetched 3 row(s)
+
+#Query by timestamp specify your timestamp 
+
+SELECT * FROM iceberg_catalog.default.employee 
+TIMESTAMP AS OF '2025-07-05 14:01:49';
+
+#Rollback to an earlier snapshot (if needed specify the ID you have)
+
+CALL iceberg_catalog.system.rollback_to_snapshot(
+  'default.employee', 
+  3033299854398411860
+);
+
+#Output 
+5308826326954041526	3033299854398411860
+Time taken: 0.141 seconds, Fetched 1 row(s)
+
+SELECT * FROM iceberg_catalog.default.employee;
+
+#You should now see the records that existed right after the overwrite and before the delete.
+201	Anya	HR	75000
+202	Ben	Finance	82000
+203	Cara	Engineering	105000
+
+*****************
+
+SELECT * FROM iceberg_catalog.default.employee.snapshots;
+
+# Even though the rollback was executed, the number of snapshots is still 3 — and there's no new snapshot yet.
+
+2025-07-05 13:50:44.071	554849194851258724	NULL	append	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-554849194851258724-1-cca1a627-b9f5-488b-a81e-c1296bc0cd2e.avro	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:01:49.186	3033299854398411860	554849194851258724	overwrite	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-3033299854398411860-1-b3be4655-9161-46b6-a528-3b45d0b38721.avro	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:04:21.535	5308826326954041526	3033299854398411860	delete	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-5308826326954041526-1-772cbe65-d8ea-4785-a4d0-50edeb4f2cc5.avro	{"changed-partition-count":"1","deleted-data-files":"1","deleted-records":"1","removed-files-size":"1072","spark.app.id":"local-1751721654277","total-data-files":"1","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"1147","total-position-deletes":"0","total-records":"2"}
+
+
+********** Imp Point ********
+Why No New Snapshot After Rollback?
+Iceberg does not create a new snapshot just for rollback. Instead, it changes the current metadata pointer to point to the previous snapshot. So the rollback is immediate, but doesn't leave an audit trail unless you make a new data change.
+
+This is expected behavior.
+*****************************
+
+SELECT snapshot_id, parent_id, operation, summary
+FROM iceberg_catalog.default.employee.snapshots
+ORDER BY committed_at;
+
+#output
+554849194851258724	NULL	append	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
+3033299854398411860	554849194851258724	overwrite	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
+5308826326954041526	3033299854398411860	delete	{"changed-partition-count":"1","deleted-data-files":"1","deleted-records":"1","removed-files-size":"1072","spark.app.id":"local-1751721654277","total-data-files":"1","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"1147","total-position-deletes":"0","total-records":"2"}
+
+if the otput is very verbose 
+
+spark-sql \
+  --conf "spark.sql.catalog.iceberg_catalog=org.apache.iceberg.spark.SparkCatalog" \
+  --conf "spark.sql.catalog.iceberg_catalog.type=hadoop" \
+  --conf "spark.sql.catalog.iceberg_catalog.warehouse=file:///home/ubuntu/spark/warehouse" \
+  --conf "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions" \
+  --conf "spark.executor.extraJavaOptions=-Dlog4j.configuration=log4j.properties" \
+  --conf "spark.driver.extraJavaOptions=-Dlog4j.configuration=log4j.properties"
+  
+
+
