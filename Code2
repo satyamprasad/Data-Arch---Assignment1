@@ -1,0 +1,165 @@
+mkdir -p ~/spark_iceberg_jars
+
+curl -o ~/spark_iceberg_jars/iceberg-spark-runtime-3.5_2.12-1.6.1.jar https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.6.1/iceberg-spark-runtime-3.5_2.12-1.6.1.jar
+
+curl -o ~/spark_iceberg_jars/iceberg-core-1.6.1.jar https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-core/1.6.1/iceberg-core-1.6.1.jar
+
+#Check if the files have been donloaded correctly 
+
+cd spark_iceberg_jars/
+
+ls -lrt
+
+# Creat a folder for metadata 
+
+mkdir /home/ubuntu/iceberg_warehouse
+
+spark-sql \
+    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.1 \
+    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+    --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
+    --conf spark.sql.catalog.spark_catalog.type=hadoop \
+    --conf spark.sql.catalog.spark_catalog.warehouse=/home/ubuntu/iceberg_warehouse
+    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+    
+------------------------quick check-----------------------------------
+# Create an Iceberg table
+CREATE TABLE spark_catalog.default.my_iceberg_table (id INT, name STRING) USING iceberg;
+
+# Insert some data
+INSERT INTO spark_catalog.default.my_iceberg_table VALUES (1, 'Alice'), (2, 'Bob');
+
+# Query the table
+SELECT * FROM spark_catalog.default.my_iceberg_table;
+
+# Demonstrate a schema evolution (add a column)
+ALTER TABLE spark_catalog.default.my_iceberg_table ADD COLUMN age INT;
+
+# Insert data into the new schema
+INSERT INTO spark_catalog.default.my_iceberg_table VALUES (3, 'Charlie', 30);
+
+# Query again to see the new column
+SELECT * FROM spark_catalog.default.my_iceberg_table;
+
+---------------------------------
+
+Create a table:
+
+CREATE TABLE spark_catalog.default.employee2 (
+  id INT,
+  name STRING,
+  department STRING,
+  salary INT
+)
+USING iceberg;
+
+INSERT INTO spark_catalog.default.employee2 VALUES
+  (201, 'Anya', 'HR', 75000),
+  (202, 'Ben', 'Finance', 82000),
+  (203, 'Cara', 'Engineering', 95000);
+
+
+SELECT * FROM spark_catalog.default.employee2;
+
+UPDATE spark_catalog.default.employee2
+SET salary = salary + 10000
+WHERE department = 'Engineering';
+
+#check if the changes have taken place 
+
+SELECT * FROM spark_catalog.default.employee2;
+
+
+DELETE FROM spark_catalog.default.employee2
+WHERE department = 'HR';
+
+Check if HR is deleted 
+SELECT * FROM spark_catalog.default.employee2;
+
+
+#SELECT * FROM spark_catalog.default.employee2 WHERE salary > 80000;
+
+#First, check all snapshots:
+
+CALL spark_catalog.system.snapshots('default.employee2');
+
+#if it does not work try the below if the call function is not found 
+
+spark-sql (default)> SELECT * FROM spark_catalog.default.employee2.snapshots;
+
+#Output will be 
+*********************
+2025-07-05 13:50:44.071	554849194851258724	NULL	append	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-554849194851258724-1-cca1a627-b9f5-488b-a81e-c1296bc0cd2e.avro	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:01:49.186	3033299854398411860	554849194851258724	overwrite	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-3033299854398411860-1-b3be4655-9161-46b6-a528-3b45d0b38721.avro	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:04:21.535	5308826326954041526	3033299854398411860	delete	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-5308826326954041526-1-772cbe65-d8ea-4785-a4d0-50edeb4f2cc5.avro	{"changed-partition-count":"1","deleted-data-files":"1","deleted-records":"1","removed-files-size":"1072","spark.app.id":"local-1751721654277","total-data-files":"1","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"1147","total-position-deletes":"0","total-records":"2"}
+Time taken: 0.334 seconds, Fetched 3 row(s)
+
+Explanation of output: 
+
+| **Timestamp**         | **Snapshot ID**       | **Operation** | **Parent**            | **What Happened**                        |
+| --------------------- | --------------------- | ------------- | --------------------- | ---------------------------------------- |
+| `2025-07-05 13:50:44` | `554849194851258724`  | `append`      | `NULL`                | Added 3 records in 2 data files          |
+| `2025-07-05 14:01:49` | `3033299854398411860` | `overwrite`   | `554849194851258724`  | Removed 1 data file, added 2 new records |
+| `2025-07-05 14:04:21` | `5308826326954041526` | `delete`      | `3033299854398411860` | Deleted 1 record and 1 data file         |
+**********************
+#Query a past snapshot
+
+SELECT * FROM spark_catalog.default.employee2 
+VERSION AS OF 3033299854398411860;
+
+********************** the output shows all the records but we had deleted the employee HR**********
+
+202	Ben	Finance	82000
+203	Cara	Engineering	105000
+201	Anya	HR	75000
+Time taken: 1.019 seconds, Fetched 3 row(s)
+
+#Query by timestamp specify your timestamp 
+
+SELECT * FROM spark_catalog.default.employee2 
+TIMESTAMP AS OF '2025-07-05 14:01:49';
+
+#Rollback to an earlier snapshot (if needed specify the ID you have)
+
+CALL spark_catalog.system.rollback_to_snapshot(
+  'default.employee2', 
+  3033299854398411860
+);
+
+#Output 
+5308826326954041526	3033299854398411860
+Time taken: 0.141 seconds, Fetched 1 row(s)
+
+SELECT * FROM spark_catalog.default.employee2;
+
+#You should now see the records that existed right after the overwrite and before the delete.
+201	Anya	HR	75000
+202	Ben	Finance	82000
+203	Cara	Engineering	105000
+
+*****************
+
+SELECT * FROM spark_catalog.default.employee2.snapshots;
+
+# Even though the rollback was executed, the number of snapshots is still 3 — and there's no new snapshot yet.
+
+2025-07-05 13:50:44.071	554849194851258724	NULL	append	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-554849194851258724-1-cca1a627-b9f5-488b-a81e-c1296bc0cd2e.avro	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:01:49.186	3033299854398411860	554849194851258724	overwrite	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-3033299854398411860-1-b3be4655-9161-46b6-a528-3b45d0b38721.avro	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
+2025-07-05 14:04:21.535	5308826326954041526	3033299854398411860	delete	file:/home/ubuntu/spark/warehouse/default/employee/metadata/snap-5308826326954041526-1-772cbe65-d8ea-4785-a4d0-50edeb4f2cc5.avro	{"changed-partition-count":"1","deleted-data-files":"1","deleted-records":"1","removed-files-size":"1072","spark.app.id":"local-1751721654277","total-data-files":"1","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"1147","total-position-deletes":"0","total-records":"2"}
+
+
+********** Imp Point ********
+Why No New Snapshot After Rollback?
+Iceberg does not create a new snapshot just for rollback. Instead, it changes the current metadata pointer to point to the previous snapshot. So the rollback is immediate, but doesn't leave an audit trail unless you make a new data change.
+
+This is expected behavior.
+*****************************
+
+SELECT snapshot_id, parent_id, operation, summary
+FROM iceberg_catalog.default.employee2.snapshots
+ORDER BY committed_at;
+
+#output
+554849194851258724	NULL	append	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
+3033299854398411860	554849194851258724	overwrite	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
+5308826326954041526	3033299854398411860	delete	{"changed-
