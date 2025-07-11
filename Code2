@@ -163,3 +163,232 @@ ORDER BY committed_at;
 554849194851258724	NULL	append	{"added-data-files":"2","added-files-size":"2184","added-records":"3","changed-partition-count":"1","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2184","total-position-deletes":"0","total-records":"3"}
 3033299854398411860	554849194851258724	overwrite	{"added-data-files":"1","added-files-size":"1147","added-records":"2","changed-partition-count":"1","deleted-data-files":"1","deleted-records":"2","removed-files-size":"1112","spark.app.id":"local-1751721654277","total-data-files":"2","total-delete-files":"0","total-equality-deletes":"0","total-files-size":"2219","total-position-deletes":"0","total-records":"3"}
 5308826326954041526	3033299854398411860	delete	{"changed-
+
+
+
+
+/*******************************************11/7******************************************/
+
+
+
+On Ubuntu ************************************************  Code ******************************/
+
+#remove all running container
+
+#docker ps -aq | xargs docker stop | xargs docker rm
+
+
+
+sudo apt  install docker-compose
+
+
+#docker-compose down
+
+
+## 1. File Structure
+#First, create the following folders and files on your machine. The docker-compose.yml file relies on this exact structure.
+
+sudo apt-get install tree
+
+mkdir iceberg-docker-lab
+mkdir iceberg-docker-lab/notebooks
+mkdir iceberg-docker-lab/spark
+
+iceberg-docker-lab
+├── docker-compose.yml
+├── notebooks
+│   
+└── spark/
+    └── Dockerfile
+
+
+## 2. Create the Dockerfile for Spark
+#The Tabular setup uses a custom-built Spark image to ensure all dependencies are perfectly aligned.
+
+#Create a file named Dockerfile inside the spark/ directory and add this single line to it:
+
+vi iceberg-docker-lab/spark/Dockerfile
+
+#Add below line to iceberg-docker-lab/spark/Dockerfile
+
+FROM tabulario/spark-iceberg
+
+#This tells Docker to use Tabular's official, pre-configured Spark and Iceberg image as the foundation for our local Spark service.
+
+## 3. The docker-compose.yml
+#Now, place the following content into the docker-compose.yml file at the root of your iceberg-docker-lab project. This configuration is taken directly from the guide you shared.
+
+# Add below code to docker-compose.yml
+
+cd /home/ubuntu/iceberg-docker-lab
+vi docker-compose.yml
+
+services:
+  spark-iceberg:
+    build: spark/
+    container_name: spark-iceberg
+    depends_on:
+      - rest
+      - minio
+    volumes:
+      - ./notebooks:/home/iceberg/notebooks
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    ports:
+      - 8888:8888 # Jupyter
+      - 8282:8282 # Spark UI
+
+  rest:
+    image: tabulario/iceberg-rest
+    container_name: iceberg-rest
+    ports:
+      - 8181:8181
+    environment:
+      - CATALOG_WAREHOUSE=s3://warehouse/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    ports:
+      - 9001:9001 # MinIO Console
+      - 9000:9000 # MinIO API
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  mc:
+    image: minio/mc
+    depends_on:
+      - minio
+    container_name: mc
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc mb minio/warehouse;
+      /usr/bin/mc policy set public minio/warehouse;
+      tail -f /dev/null;
+      "
+
+#Open a terminal in the iceberg-docker-lab directory and run:
+
+Bash
+
+docker-compose up --build -d
+
+
+#This command will:
+
+Build your custom spark-iceberg image from the Dockerfile.
+
+
+## 5. Test Your Iceberg Setup
+#Once the containers are running, you can start working with Iceberg.
+
+#Navigate to the Jupyter Notebook UI at 
+
+http://localhost:8888
+
+#Navigate to the Minio UI at
+
+http://localhost:9001
+
+
+
+
+Create a new notebook.
+
+Run the following SQL commands in separate cells to test the setup. The %%sql magic command tells the notebook to run the cell content as SQL.
+
+Cell 1: Create a namespace (database)
+
+SQL
+
+%%sql
+CREATE NAMESPACE IF NOT EXISTS demo;
+Cell 2: Create a new Iceberg table
+
+SQL
+
+%%sql
+CREATE TABLE demo.nyc_taxis
+(
+  vendor_id bigint,
+  trip_id bigint,
+  trip_distance float,
+  fare_amount double,
+  store_and_fwd_flag string
+)
+USING iceberg
+Cell 3: Insert some data
+
+SQL
+
+%%sql
+INSERT INTO demo.nyc_taxis
+VALUES (1, 1000371, 1.8, 15.32, 'N'),
+       (2, 1000372, 2.5, 22.15, 'N'),
+       (2, 1000373, 0.9, 9.01, 'N'),
+       (1, 1000374, 8.4, 42.13, 'Y');
+Cell 4: Query your new table
+
+
+pip install ipython-sql
+%load_ext sql
+pip install ipython-sql
+
+--------------------------------------
+# To see all the runing conteners 
+
+docker ps
+
+#See all containers (including stopped)
+
+docker ps -a
+
+#docker images:to see all the images 
+
+docker images
+
+See Docker disk usage
+docker system df
+
+#To see the logs 
+docker logs <container_id_or_name>
+
+#To see the logs in real time 
+
+docker logs -f <container_id_or_name>
+
+See performance stats for running containers
+docker stats
+
+to search for image 
+docker search puppet
+
+to pull the images 
+
+docker pull jamtur01/puppetmaster
+
+docker stop <container_id_or_name>
+
+Remove all unused (dangling) images
+docker image prune
+
+docker start <container_id_or_name>
+
+docker restart <container_id_or_name>
+
+docker exec -it <container_id_or_name> /bin/bash
+
+
+
+
+
