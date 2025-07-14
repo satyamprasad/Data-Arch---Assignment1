@@ -41,6 +41,11 @@ vi iceberg-docker-lab/spark/Dockerfile
 
 FROM tabulario/spark-iceberg
 
+# add these lines if current iceberg version doesnt work
+
+RUN curl -L -o /opt/spark/jars/iceberg-rest-catalog-1.8.1.jar https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-rest-catalog/1.8.1/iceberg-rest-catalog-1.8.1.jar \
+&& curl -L -o /opt/spark/jars/iceberg-nessie-1.8.1.jar https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-nessie/1.8.1/iceberg-nessie-1.8.1.jar
+
 #This tells Docker to use Tabular's official, pre-configured Spark and Iceberg image as the foundation for our local Spark service.
 
 ## 3. The docker-compose.yml
