@@ -1,0 +1,262 @@
+/**************************4/7
+
+On Ubuntu ************************************************  Code ******************************/
+
+#remove all running container
+
+#docker ps -aq | xargs docker stop | xargs docker rm
+
+sudo apt-get install tree
+
+sudo apt  install docker-compose
+
+
+#docker-compose down
+
+
+## 1. File Structure
+#First, create the following folders and files on your machine. The docker-compose.yml file relies on this exact structure.
+
+
+mkdir iceberg-docker-lab
+mkdir iceberg-docker-lab/notebooks
+mkdir iceberg-docker-lab/spark
+
+iceberg-docker-labdocker
+├── docker-compose.yml
+├── notebooks
+│   
+└── spark/
+    └── Dockerfile
+
+
+## 2. Create the Dockerfile for Spark
+#The Tabular setup uses a custom-built Spark image to ensure all dependencies are perfectly aligned.
+
+#Create a file named Dockerfile inside the spark/ directory and add this single line to it:
+
+vi iceberg-docker-lab/spark/Dockerfile
+
+#Add below line to iceberg-docker-lab/spark/Dockerfile
+
+FROM tabulario/spark-iceberg
+
+#This tells Docker to use Tabular's official, pre-configured Spark and Iceberg image as the foundation for our local Spark service.
+
+## 3. The docker-compose.yml
+#Now, place the following content into the docker-compose.yml file at the root of your iceberg-docker-lab project. This configuration is taken directly from the guide you shared.
+
+# Add below code to docker-compose.yml
+
+cd /home/ubuntu/iceberg-docker-lab
+vi docker-compose.yml
+
+version: '3.8'
+
+services:
+  spark-iceberg:
+    image: tabulario/spark-iceberg
+    container_name: spark-iceberg
+    build: spark/
+    networks:
+      iceberg_net:
+    depends_on:
+      - rest
+      - minio
+      - nessie
+    volumes:
+      - ./warehouse:/home/iceberg/warehouse
+      - ./notebooks:/home/iceberg/notebooks/notebooks
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+      - SPARK_SQL_CATALOG_REST=org.apache.iceberg.rest.RESTCatalog
+      - SPARK_SQL_CATALOG_REST_URI=http://rest:8181
+      - SPARK_SQL_CATALOG_REST_WAREHOUSE=s3://warehouse/
+      - SPARK_SQL_CATALOG_REST_IO_IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - SPARK_SQL_CATALOG_REST_S3_ENDPOINT=http://minio:9000
+    ports:
+      - 8888:8888
+      - 8088:8080
+      - 10000:10000
+      - 10001:10001
+
+  spark-sql:
+    image: tabulario/spark-iceberg
+    container_name: spark-sql
+    depends_on:
+      - spark-iceberg
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      spark-sql \
+      --conf spark.sql.catalog.rest=org.apache.iceberg.rest.RESTCatalog \
+      --conf spark.sql.catalog.rest.uri=http://rest:8181 \
+      --conf spark.sql.catalog.rest.io-impl=org.apache.iceberg.aws.s3.S3FileIO \
+      --conf spark.sql.catalog.rest.warehouse=s3://warehouse/ \
+      --conf spark.sql.catalog.rest.s3.endpoint=http://minio:9000
+      "
+    networks:
+      iceberg_net:
+
+  rest:
+    image: tabulario/iceberg-rest
+    container_name: iceberg-rest
+    networks:
+      iceberg_net:
+    ports:
+      - 8181:8181
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+      - CATALOG_WAREHOUSE=s3://warehouse/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+      - CATALOG_CATALOG_IMPL=org.apache.iceberg.nessie.NessieCatalog
+      - CATALOG_NESSIE_URI=http://nessie:19120/api/v1
+
+  nessie:
+    image: projectnessie/nessie:latest
+    container_name: nessie
+    networks:
+      iceberg_net:
+    ports:
+      - 19120:19120
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      iceberg_net:
+        aliases:
+          - warehouse.minio
+    ports:
+      - 9001:9001
+      - 9000:9000
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  mc:
+    depends_on:
+      - minio
+    image: minio/mc:latest
+    container_name: mc
+    networks:
+      iceberg_net:
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc rm -r --force minio/warehouse;
+      /usr/bin/mc mb minio/warehouse;
+      /usr/bin/mc anonymous set public minio/warehouse;
+      tail -f /dev/null
+      "
+
+networks:
+  iceberg_net:
+
+------------------------------------------------------------
+#Open a terminal in the iceberg-docker-lab directory and run:
+
+
+docker-compose up --build -d
+
+
+#This command will: build your custom spark-iceberg image from the Dockerfile.
+
+
+## 5. Test Your Iceberg Setup
+#Once the containers are running, you can start working with Iceberg.
+
+#Navigate to the Jupyter Notebook UI at 
+
+http://localhost:8888 
+
+Note: (from your local system use the ip address wich you are doing useing to connect through putty http://3.135.204.139:8888)
+
+select the python kernal 
+
+#copy & past the following Spark SQL setting and execute the cell 
+-----------------------------------
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("Iceberg Spark SQL Lab") \
+    .config("spark.sql.catalog.my_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+    .config("spark.sql.catalog.my_catalog.catalog-impl", "org.apache.iceberg.rest.RESTCatalog") \
+    .config("spark.sql.catalog.my_catalog.uri", "http://iceberg-rest:8181") \
+    .config("spark.sql.catalog.my_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO") \
+    .config("spark.sql.catalog.my_catalog.s3.endpoint", "http://minio:9000") \
+    .config("spark.sql.catalog.my_catalog.warehouse", "s3://warehouse/") \
+    .config("spark.hadoop.fs.s3a.access.key", "admin") \
+    .config("spark.hadoop.fs.s3a.secret.key", "password") \
+    .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+    .getOrCreate()
+
+-----------------------------------
+Cell 2: Create a new Iceberg table
+
+spark.sql("CREATE TABLE my_catalog.default.employees (id INT, name STRING) USING iceberg")
+
+spark.sql("INSERT INTO my_catalog.default.employees VALUES (1, 'Alok'), (2, 'Ranjan')")
+
+spark.sql("SELECT * FROM my_catalog.default.employees").show()
+
+
+#Navigate to the Minio UI at
+
+http://localhost:9001
+Note: (from your local system use the ip address wich you are doing useing to connect through putty http://3.135.204.139:9001)
+
+
+
+--------------------------------------
+# To see all the runing conteners 
+
+docker ps
+
+#See all containers (including stopped)
+
+docker ps -a
+
+#docker images:to see all the images 
+
+docker images
+
+See Docker disk usage
+docker system df
+
+#To see the logs 
+docker logs <container_id_or_name>
+
+#To see the logs in real time 
+
+docker logs -f <container_id_or_name>
+
+See performance stats for running containers
+docker stats
+
+to search for image 
+docker search puppet
+
+to pull the images 
+
+docker pull jamtur01/puppetmaster
+
+docker stop <container_id_or_name>
+
+Remove all unused (dangling) images
+docker image prune
+
+docker start <container_id_or_name>
+
+docker restart <container_id_or_name>
