@@ -265,3 +265,89 @@ docker image prune
 docker start <container_id_or_name>
 
 docker restart <container_id_or_name>
+
+
+
+/*******************************17/7
+
+kafka:
+Steps:
+
+#1. Open the 4 terminals arrange on the desktop(if useing putty or on lab desktop) and go to kafka folder (check the current working directory, if you are in home directory you can use the following command)
+# in all four terminals go to below folder it is in your home directory  
+
+cd kafka_2.13-3.9.0
+
+2. Start Zookeeper Command - 
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+3. Start Kafka Server Command - 
+bin/kafka-server-start.sh config/server.properties
+
+#Check Zookeeper is running run this command in your terminal:
+
+nc -zv localhost 2181
+
+#If it connects successfully, Zookeeper is up.
+
+
+#Check Kafka Broker is running run this command in your terminal:
+
+nc -zv localhost 9092
+
+#If it says: Connection to localhost (127.0.0.1) 9092 port [tcp/*] succeeded! that means it is running fine
+
+#Create a Topic 
+
+bin/kafka-topics.sh --create \
+  --topic my-events \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1
+-----------------------------------------
+
+bin/kafka-topics.sh --create \
+  --topic demo-topic \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1
+-----------------------------------------
+#to check if the topic is created 
+
+bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+
+#Start a Console Producer (which will creat the Events)
+
+bin/kafka-console-producer.sh \
+  --topic my-events \
+  --bootstrap-server localhost:9092
+  
+  
+#Create a consumer to read from topic name my-event 
+
+bin/kafka-console-consumer.sh \
+  --topic my-events \
+  --from-beginning \
+  --bootstrap-server localhost:9092
+
+
+# Create a consumer to write the content of the topic to a file 
+
+bin/kafka-console-consumer.sh \
+  --topic my-events \
+  --bootstrap-server localhost:9092 \
+  --from-beginning > kafka_output.txt
+
+
+#To delete a topic (but don't ude this command)
+bin/kafka-topics.sh --delete --topic my-events --bootstrap-server localhost:9092
+
+
+# To write the content of the topic to a file 
+
+bin/kafka-console-consumer.sh \
+  --topic my-events \
+  --bootstrap-server localhost:9092 \
+  --from-beginning > kafka_output.txt
+
+
