@@ -1,0 +1,41 @@
+Tools Installed:
+docker
+spark
+airlfow
+flink
+kafka
+fastapi
+flask
+apache flink
+
+
+=======
+PySpark:
+Steps:
+1. Open the terminal, and type pyspark
+
+
+=======
+kafka:
+Steps:
+1. Open the terminal and go to kafka folder 'cd kafka_2.13-3.9.0'
+2. Start Zookeeper Command - 
+bin/zookeeper-server-start.sh config/zookeeper.properties
+3. Start Kafka Server Command - 
+bin/kafka-server-start.sh config/server.properties
+
+
+=======
+airflow:
+Steps:
+1. Open the terminal, and run "source airflow-venv/bin/activate"
+2. Run "airflow webserver --port 8082"
+3.  In another terminal tab again repeat "source airflow-venv/bin/activate"
+4. Now run, "airflow scheduler"
+5. Now open localhost:8082 on chrome
+6. Username - admin, Password - admin
+======
+flink:
+Steps:
+1. Open the terminal, and run /home/ubuntu/flink-2.0.0/bin/start-cluster.sh
+2. To close the cluster, run: /home/ubuntu/flink-2.0.0/bin/stop-cluster.sh
