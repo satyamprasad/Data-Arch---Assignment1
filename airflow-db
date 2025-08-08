@@ -1,0 +1,606 @@
+airflow:
+Steps:
+1. Open the terminal, and run "source airflow-venv/bin/activate"
+2. Run "airflow webserver --port 8082"
+3.  In another terminal tab again repeat "source airflow-venv/bin/activate"
+4. Now run, "airflow scheduler"
+5. Now open "localhost:8082" on chrome
+6. Username - admin, Password - admin
+
+-----------In case You have issue find out if the Airflow is running:--------
+-----------if starrting for the first time don't need to do this ------------
+
+ps aux | grep airflow
+
+kill <PID>
+cd 
+pkill -f "airflow webserver"
+
+rm -f ~/airflow/airflow-webserver.pid
+rm -f ~/airflow/airflow-scheduler.pid
+rm -f ~/airflow/airflow-triggerer.pid
+
+lsof -i :8082
+
+kill -9 12345   # Replace 12345 with actual PID
+
+source ~/airflow-venv/bin/activate
+
+sudo netstat -tulnp | grep 8082
+
+sudo fuser -k 8082/tcp
+
+
+airflow tasks list basic_etl
+airflow tasks test basic_etl extract_task 2025-08-05
+airflow dags list
+
+rm -rf ~/.config/Code/Cache/*
+rm -rf ~/.config/Code/CachedData/*
+
+free -h
+top
+
+=====================================================
+create a file people.csv
+
+vi people.csv
+
+Insert the below content 
+=====================================================
+people.csv
+
+id,name,age
+1,John,30
+2,Jane,25
+3,David,35
+4,Arjun,27
+5,Sinu,4
+6,mark,30
+7,Alok,19
+8,jay,20
+9,puja,23
+
+--------------------------------
+=====================================================
+#/home/ubuntu/airflow-venv/lib/python3.10/site-packages/airflow/example_dags
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import pandas as pd
+import os
+
+def copy_csv_file(source_file, destination_file):
+    if not os.path.exists(source_file):
+        raise FileNotFoundError(f" Source file not found: {source_file}")
+    
+    df = pd.read_csv(source_file)
+    os.makedirs(os.path.dirname(destination_file), exist_ok=True)
+    df.to_csv(destination_file, index=False)
+    print(f" Copied CSV from {source_file} to {destination_file}")
+
+default_args = {
+    'start_date': datetime(2023, 1, 1),
+}
+
+with DAG(
+    dag_id='csv_copy_dag',
+    default_args=default_args,
+    schedule_interval=None,
+    catchup=False,
+    description='Copy people.csv to people_copy.csv',
+) as dag:
+
+    copy_task = PythonOperator(
+        task_id='copy_people_csv',
+        python_callable=copy_csv_file,
+        op_kwargs={
+            'source_file': '/home/ubuntu/people.csv',            # ← path inside container
+            'destination_file': '/home/ubuntu/people_copy.csv',  # ← output file
+        }
+    )
+
+-------------------------In case your Job doesnot show up -----------------
+check the config file for the location where it is taking Dag--------------
+
+
+nano ~/airflow/airflow.cfg
+# Variable: AIRFLOW__CORE__DAGS_FOLDER
+#
+dags_folder = /home/ubuntu/airflow/dags
+
+---------------------------------------------------------------------------
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import pandas as pd
+import os
+
+def copy_csv_file(source_file, destination_file, over_30_file):
+    if not os.path.exists(source_file):
+        raise FileNotFoundError(f" Source file not found: {source_file}")
+    
+    df = pd.read_csv(source_file)
+    os.makedirs(os.path.dirname(destination_file), exist_ok=True)
+    os.makedirs(os.path.dirname(over_30_file), exist_ok=True)
+
+    # Write all rows to destination_file
+    df.to_csv(destination_file, index=False)
+    print(f"Copied CSV from {source_file} to {destination_file}")
+
+    # Filter and write rows where age > 30 to over_30_file
+    df_over_30 = df[df['age'] >= 30]
+    df_over_30.to_csv(over_30_file, index=False)
+    print(f"Copied rows with age > 30 from {source_file} to {over_30_file}")
+
+default_args = {
+    'start_date': datetime(2023, 1, 1),
+}
+
+with DAG(
+    dag_id='csv_copy_dag',
+    default_args=default_args,
+    schedule_interval=None,
+    catchup=False,
+    description='Copy people.csv to people_copy.csv and people_over_30.csv',
+) as dag:
+
+    copy_task = PythonOperator(
+        task_id='copy_people_csv',
+        python_callable=copy_csv_file,
+        op_kwargs={
+            'source_file': '/home/ubuntu/people.csv',
+            'destination_file': '/home/ubuntu/people_copy.csv',
+            'over_30_file': '/home/ubuntu/people_over_30.csv',
+        }
+    )
+
+
+=========================load_csv_to_mysql===========================================
+
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import pandas as pd
+import mysql.connector
+
+def load_csv_to_mysql():
+    # Load CSV
+    csv_path = '/opt/airflow/data/simple.csv' #Change as per you system 
+    df = pd.read_csv(csv_path)
+
+    # Connect to MySQL
+    conn = mysql.connector.connect(
+        host='host.docker.internal',  #Change the host name
+        user='root',
+        password='root',
+        database='mydb',
+        port=3306
+    )
+    cursor = conn.cursor()
+
+    # Optional: create table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS people (
+            id INT PRIMARY KEY,
+            name VARCHAR(100),
+            age INT
+        );
+    """)
+
+    # Insert data safely - skip duplicates
+    for _, row in df.iterrows():
+        cursor.execute(
+            "INSERT IGNORE INTO people (id, name, age) VALUES (%s, %s, %s)",
+            (int(row['id']), row['name'], int(row['age']))
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print(" CSV data inserted into MySQL (duplicates ignored).")
+
+default_args = {
+    'start_date': datetime(2024, 1, 1),
+}
+
+with DAG(
+    dag_id='load_csv_to_mysql_dag',
+    default_args=default_args,
+    schedule_interval=None,
+    catchup=False,
+    tags=['csv', 'mysql']
+) as dag:
+
+    task = PythonOperator(
+        task_id='load_csv_to_mysql',
+        python_callable=load_csv_to_mysql
+    )
+
+
+  
+  
+  
+==========================Install MySQL Workbench=======================
+Full Installation Steps for Ubuntu with GUI (Not WSL)
+
+#Step 1: Update system packages
+sudo apt update && sudo apt upgrade -y
+
+#Step 2: Install MySQL Workbench
+
+sudo apt install mysql-workbench -y
+
+#Step 3: (Optional) Install MySQL Server
+If you also want to run MySQL locally:
+
+
+#sudo apt install mysql-server -y
+Start and enable it:
+
+
+sudo systemctl start mysql
+sudo systemctl enable mysql
+
+#Step 4: Launch MySQL Workbench (GUI)
+
+mysql-workbench
+
+If installed correctly and your system has a GUI (like GNOME or XFCE), the Workbench UI will launch.
+
+#Step 5: (Optional) Set MySQL root password
+To secure your MySQL installation:
+
+sudo mysql_secure_installation
+
+Follow the prompts to set a root password and remove test databases if needed.
+
+All Commands Together 
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install mysql-workbench -y
+sudo apt install mysql-server -y
+sudo systemctl start mysql
+sudo systemctl enable mysql
+mysql-workbench
+
+
+
+
+=========================api_to_s3 bucket================================
+
+# File: /opt/airflow/dags/api_to_s3.py
+
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import os
+import json
+import requests
+import boto3
+
+def post_api_and_upload_to_s3(output_file, bucket_name, key):
+    # Step 1: Login
+    login_url = 'http://host.docker.internal:8000/api/auth/login/'
+    login_payload = {
+        "phone": "8084611838",
+        "password": "123"
+    }
+
+    try:
+        login_resp = requests.post(login_url, json=login_payload)
+        print("🔍 Login response:", login_resp.text)
+        login_resp.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise Exception(f" Login failed: {e}")
+
+    token = login_resp.json().get("access")
+    if not token:
+        raise Exception(" No access token returned")
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    # Step 2: Tracking payload (correct endpoint and JSON keys)
+    tracking_payload = {
+        "guest_id": "e9e0b1a322b5efa9",
+        "user_type": "guest",
+        "login_email": "",
+        "login_mobile": "",
+        "session_key": "sess_42a99b",
+        "session_start": "2025-07-26T06:30:23.799Z",
+        "session_end": "2025-07-26T07:00:00.000Z",
+        "ip_address": "192.168.1.101",
+        "device_information": "Chrome on Windows",
+        "action": "visited dashboard",
+        "model_name": "Booking",
+        "model_object_id": "BK00123",
+        "request_method": "POST",
+        "endpoint_path": "/api/master/tracking/create/",  # 
+        "request_payload": "{\"search\": \"hotels\"}",
+        "time_since_last_request": 6,
+        "request_data": "{\"device\": \"desktop\"}",
+        "response_data": "{\"status\": \"ok\"}",
+        "error_message": "",
+        "use_template": "1",
+        "user": None  #  correct Python syntax
+    }
+
+    tracking_url = 'http://host.docker.internal:8000/api/master/tracking/create/'
+    try:
+        resp = requests.post(tracking_url, json=tracking_payload, headers=headers)
+        print(" Tracking response:", resp.text)
+        resp.raise_for_status()
+        print("Tracking POST successful")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Tracking API request failed: {e}")
+
+    # Step 3: Save to local file
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    with open(output_file, "w") as f:
+        json.dump(tracking_payload, f, indent=2)
+    print(f"Saved to file: {output_file}")
+
+    # Step 4: Upload to S3
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id='AKIAVXUVISURLCW6BW4C',
+        aws_secret_access_key='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'
+    )
+
+    s3.upload_file(output_file, bucket_name, key)
+    print(f"Uploaded to s3://{bucket_name}/{key}")
+
+
+# DAG setup
+default_args = {'start_date': datetime(2023, 1, 1)}
+
+with DAG(
+    'post_api_to_s3_direct_boto3_dag',
+    default_args=default_args,
+    schedule_interval=None,
+    catchup=False,
+    description='Post API and upload to S3 using boto3',
+) as dag:
+
+    post_task = PythonOperator(
+        task_id='post_api_and_upload',
+        python_callable=post_api_and_upload_to_s3,
+        op_kwargs={
+            'output_file': '/opt/warehouse/data/api_tracking_payload.json',
+            'bucket_name': 'api124',
+            'key': 'tracking/api_tracking_payload.json'
+        }
+    )
+
+
+
+
+
+=======================DAG: MySQL to File =============================
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.providers.mysql.hooks.mysql import MySqlHook
+from datetime import datetime
+import pandas as pd
+import os
+
+# Function: Extract from MySQL and save to CSV
+def extract_mysql_to_csv(mysql_conn_id, sql_query, output_file):
+    mysql_hook = MySqlHook(mysql_conn_id=mysql_conn_id)
+    df = mysql_hook.get_pandas_df(sql_query)
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)  # Ensure folder exists
+    df.to_csv(output_file, index=False)
+    print(f"Extracted data to: {output_file}")
+
+# Default DAG arguments
+default_args = {
+    'start_date': datetime(2023, 1, 1),
+}
+
+# DAG Definition
+with DAG(
+    'mysql_to_local_file_dag',
+    default_args=default_args,
+    schedule_interval=None,
+    catchup=False,
+    description='Extract MySQL data and save as local CSV file',
+) as dag:
+
+    extract_task = PythonOperator(
+        task_id='extract_mysql_to_csv',
+        python_callable=extract_mysql_to_csv,
+        op_kwargs={
+            'mysql_conn_id': 'mysql_default',  # must exist in Airflow Connections
+            'sql_query': 'SELECT * FROM people',  # your MySQL query
+            'output_file': '/opt/warehouse/data/mysql_export.csv'  # local path
+        }
+    )
+
+    extract_task
+
+
+sudo apt update
+sudo apt install mysql-workbench -y
+mysql-workbench
+
+ubuntu@ip-172-31-12-86:~$ sudo apt install mysql-workbench -y
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+E: Unable to locate package mysql-workbench
+ubuntu@ip-172-31-12-86:~$ mysql-workbench
+mysql-workbench: command not found
+ubuntu@ip-172-31-12-86:~$ 
+------------------
+
+
+
+------------------------------------------------- MySQL----------------------------------------
+
+wget https://dev.mysql.com/get/Downloads/MySQLGUITools/mysql-workbench-community_8.0.43-1ubuntu22.04_amd64.deb
+
+sudo apt install ./mysql-workbench-community_8.0.43-1ubuntu22.04_amd64.deb
+
+#sudo apt --fix-broken install
+
+mysql -u root -p
+sudo mysql -u root -p
+
+Password: Test@123
+
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_root_password';
+FLUSH PRIVILEGES;
+
+'user': 'root',
+'password': 'your_root_password',
+
+CREATE DATABASE people_db;
+USE people_db;
+
+CREATE TABLE people (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    age INT
+);
+
+-- Only run this if you're okay with removing uniqueness
+ALTER TABLE people DROP PRIMARY KEY;
+
+
+INSERT INTO people (id, name, age) VALUES
+(1, 'John', 30),
+(2, 'Jane', 25),
+(3, 'David', 35),
+(4, 'Arjun', 27),
+(5, 'Sinu', 4),
+(6, 'mark', 30),
+(7, 'Alok', 19),
+(8, 'jay', 20),
+(9, 'puja', 23);
+
+
+
+sudo apt-get update
+sudo apt-get install -y libmysqlclient-dev default-libmysqlclient-dev build-essential pkg-config
+
+pip install apache-airflow-providers-mysql
+
+
+
+
+Option 1: Upgrade Airflow (Recommended)
+From your Ubuntu terminal:
+
+pip install --upgrade "apache-airflow==2.10.4"
+Then reinstall your provider:
+
+pip install "apache-airflow-providers-mysql==3.6.3"
+ This will match versions correctly.
+
+
+
+ Option 2: Downgrade the Provide
+ 
+If you want to keep your current Airflow version (e.g. 2.8), then install an older MySQL provider:
+
+pip uninstall apache-airflow-providers-mysql
+pip install apache-airflow-providers-mysql==2.4.1
+Use a version that works with your Airflow version.
+
+airflow version
+Compare that version with this compatibility matrix:
+https://airflow.apache.org/docs/apache-airflow-providers/index.html
+
+mysql --version
+mysql  Ver 8.0.42-0ubuntu0.22.04.1 for Linux on x86_64 ((Ubuntu))
+
+airflow version
+2.8.2
+---------------
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+from airflow.hooks.base import BaseHook
+import pandas as pd
+import mysql.connector
+
+# Define default args and DAG
+default_args = {
+    'owner': 'airflow',
+    'start_date': datetime(2024, 1, 1),
+}
+
+dag = DAG(
+    dag_id='csv_to_mysql_direct_connection',
+    default_args=default_args,
+    schedule_interval=None,  # Run manually
+    catchup=False,
+    description='Load CSV data into MySQL without using Airflow Connection',
+)
+
+# Task function
+def load_csv_to_mysql():
+    # Replace these with your MySQL credentials
+    mysql_config = {
+        'host': 'localhost',
+        'user': 'your_mysql_user',
+        'password': 'your_mysql_password',
+        'database': 'your_database_name',
+        'port': 3306,
+    }
+
+    # Read CSV
+    csv_file = '/home/ubuntu/airflow/data/people.csv'
+    df = pd.read_csv(csv_file)
+
+    # Connect to MySQL
+    conn = mysql.connector.connect(**mysql_config)
+    cursor = conn.cursor()
+
+    # Insert data row by row (basic example)
+    for _, row in df.iterrows():
+       # sql = "INSERT INTO people (id, name, age) VALUES (%s, %s, %s)"
+       sql = "INSERT IGNORE INTO people (id, name, age) VALUES (%s, %s, %s)"
+
+        cursor.execute(sql, tuple(row))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print("Data inserted successfully.")
+
+# Create PythonOperator
+load_task = PythonOperator(
+    task_id='load_csv_to_mysql',
+    python_callable=load_csv_to_mysql,
+    dag=dag,
+)
+
+
+pip install mysql-connector-python pandas
+
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'your_root_password';
+FLUSH PRIVILEGES;
+
+'user': 'root',
+'password': 'your_root_password',
+
+
+
+
+=========================
+
+| Schedule               | `schedule_interval` value              |
+| ---------------------- | -------------------------------------- |
+| Every minute           | `"* * * * *"`                          |
+| Hourly                 | `"@hourly"`                            |
+| Daily at midnight      | `"@daily"`                             |
+| Weekly (Sunday)        | `"@weekly"`                            |
+| Monthly (1st of month) | `"@monthly"`                           |
+| Once only              | `None`                                 |
+| Custom CRON            | `"0 6 * * MON-FRI"` (6 AM on weekdays) |
