@@ -1,0 +1,225 @@
+
+Pre installation check 
+
+echo $JAVA_HOME
+--------
+/usr/lib/jvm/java-11-openjdk-amd6
+
+
+java --version 
+-------
+openjdk 11.0.27 2025-04-15
+
+echo $PATH
+-------
+/home/ubuntu/spark/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+
+
+Install Apache NiFi in Home Directory
+
+cd ~
+wget https://archive.apache.org/dist/nifi/1.23.0/nifi-1.23.0-bin.zip
+
+unzip nifi-1.23.0-bin.zip
+mv nifi-1.23.0 nifi
+
+#############################################
+cd nifi/conf
+vi nifi.properties
+
+check the following properties 
+
+# Site to Site properties
+nifi.remote.input.host=
+nifi.remote.input.secure=false
+nifi.remote.input.socket.port=
+nifi.remote.input.http.enabled=true
+nifi.remote.input.http.transaction.ttl=30 sec
+nifi.remote.contents.cache.expiration=30 secs
+
+# web properties #
+#############################################
+
+# For security, NiFi will present the UI on 127.0.0.1 and only be accessible through this loopback interface.
+# Be aware that changing these properties may affect how your instance can be accessed without any restriction.
+# We recommend configuring HTTPS instead. The administrators guide provides instructions on how to do this.
+
+nifi.web.http.host=0.0.0.0
+nifi.web.http.port=9090
+nifi.web.http.network.interface.default=
+
+#############################################
+
+nifi.web.https.host=
+nifi.web.https.port=
+nifi.web.https.network.interface.default=
+nifi.web.https.application.protocols=http/1.1
+nifi.web.jetty.working.directory=./work/jetty
+nifi.web.jetty.threads=200
+nifi.web.max.header.size=16 KB
+
+
+##############################################
+
+save the file by useing esc :wq
+
+-------------------------- Not required----------
+Update your PATH:
+
+echo 'export NIFI_HOME=$HOME/nifi' >> ~/.bashrc
+echo 'export NIFI_HOME=$HOME/nifi' >> ~/.bashrc
+source ~/.bashrc
+-------------------------------------------------
+cd nifi/bin
+
+Start & Stop NiFi
+./nifi.sh start
+./nifi.sh status
+./nifi.sh stop
+
+
+UI: http://loalhost:9090/nifi
+
+#################################### it is alrady installed hence we dont need tp do it #########
+
+Install & Configure PostgreSQL
+sudo apt update
+sudo apt install postgresql postgresql-contrib -y
+
+
+Enable service:
+sudo systemctl status postgresql
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+################################################################################################
+
+sudo systemctl status postgresql
+
+#Create DB, user, table:
+
+sudo -i -u postgres
+psql
+
+
+Inside psql:
+
+CREATE DATABASE nifi_demo;
+CREATE USER nifi_user WITH PASSWORD 'nifi_pass';
+GRANT ALL PRIVILEGES ON DATABASE nifi_demo TO nifi_user;
+
+\c nifi_demo;
+
+CREATE TABLE people (
+  id   INT PRIMARY KEY,
+  name TEXT,
+  age  INT,
+  city TEXT
+);
+
+\q
+exit
+
+4 Install PostgreSQL JDBC Driver (for NiFi) (it is already installed)
+
+sudo apt-get install libpostgresql-jdbc-java -y
+
+
+Copy driver into NiFi lib dir:
+
+cp /usr/share/java/postgresql.jar ~/nifi/lib/
+
+5 Prepare Input CSV File
+mkdir -p ~/nifi_data/input
+
+
+Create file 
+vi ~/nifi_data/input/people.csv
+
+id,name,age,city
+1,Alok,35,Bangalore
+2,Riya,29,Delhi
+3,Amit,40,Mumbai
+4,Neha,25,Pune
+
+6. Build NiFi Flow (UI)
+
+In NiFi UI drag these processors:
+
+ GetFile
+
+Input Directory: /home/ubuntu/nifi_data/input
+
+Keep Source File: false
+
+UpdateAttribute (optional metadata)
+
+Add property: file.type = csv
+
+ConvertRecord
+
+Record Reader: CSVReader (Controller Service → infer schema)
+
+Record Writer: JsonRecordSetWriter
+
+UpdateRecord (Transformation)
+
+Record Reader: CSVReader
+
+Record Writer: JsonRecordSetWriter
+
+Add property: /city → ${field.value:toUpper()}
+
+PutDatabaseRecord
+
+Use DBCPConnectionPool controller service
+
+Database URL:
+
+jdbc:postgresql://localhost:5432/nifi_demo
+
+
+Driver Class:
+
+org.postgresql.Driver
+
+
+Driver Location(s):
+
+/home/ubuntu/nifi/lib/postgresql.jar
+
+
+Username: nifi_user
+
+Password: nifi_pass
+
+Table: people
+
+#############################################
+
+Run & Monitor
+
+Drop people.csv into ~/nifi_data/input/
+
+Start processors
+
+Check Provenance Events to debug
+
+Validate in PostgreSQL
+sudo -i -u postgres
+psql -d nifi_demo
+
+
+Query:
+
+SELECT * FROM people;
+
+
+You should see:
+
+ id |  name  | age |   city
+----+--------+-----+----------
+  1 | Alok   |  35 | BANGALORE
+  2 | Riya   |  29 | DELHI
+  3 | Amit   |  40 | MUMBAI
+  4 | Neha   |  25 | PUNE
+
