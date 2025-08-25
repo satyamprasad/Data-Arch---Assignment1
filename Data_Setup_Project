@@ -1,0 +1,258 @@
+it_governance.object_owner_mapping_non_ent
+it_governance.object_owner_mapping
+it_governance.mdp_source_to_iceberg_metadata_columns
+it_governance.dg_gp_data_aging_purge_config_info_vw
+fin_ops.svc_Acct_dtls
+
+
+Vendor Commitments (T)
+
+Inventory Requests (T), Shipments (T)
+
+—​
+
+Payments (T), Invoice Details (T)​
+
+VENDOR_SKU_PRICING
+tracks vendor pricing and cost competitiveness
+VENDOR_COST
+
+ubuntu@ip-172-31-4-41:~$ sudo mysql -u root -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 34
+Server version: 8.0.43-0ubuntu0.22.04.1 (Ubuntu)
+
+Copyright (c) 2000, 2025, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> create database vendor_db;
+Query OK, 1 row affected (0.01 sec)
+
+mysql> grant all privileges on vendor_db.* to 'nifi_user@localhost';
+Query OK, 0 rows affected (0.01 sec)
+
+ubuntu@ip-172-31-4-41:~$ mysql -u nifi_user@localhost -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 35
+Server version: 8.0.43-0ubuntu0.22.04.1 (Ubuntu)
+
+Copyright (c) 2000, 2025, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> use vendor_db;
+Database changed
+
+postgres@ip-172-31-4-41:~$ psql -U nifi_user -d vendor_db -h localhost
+Password for user nifi_user:
+psql (14.18 (Ubuntu 14.18-0ubuntu0.22.04.1))
+SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits: 256, compression: off)
+Type "help" for help.
+
+
+ubuntu@ip-172-31-4-41:~$ sudo -i -u postgres
+connection to server at "localhost" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+postgres@ip-172-31-4-41:~$ psql
+psql (14.18 (Ubuntu 14.18-0ubuntu0.22.04.1))
+Type "help" for help.
+
+postgres=# create database vendor_db;
+CREATE DATABASE	
+
+vendor_shipments
+SHIP_ID	Unique identifier for the shipment record.	NUMBER primary key
+VENDOR_ID	Unique identifier for the vendor responsible for the shipment.	NUMBER
+SHIP_MODE	Mode of shipment used (e.g., Air, Sea, Road, Rail).	VARCHAR(10)
+SHIP_DATE	Date on which the shipment was dispatched.	DATE
+VENDOR_GVM_ID	Reference to the vendor’s geographic mapping ID (GVM_ID) for location tracking.	NUMBER
+FACILITY_ID	Identifier for the facility from which the shipment originated.	NUMBER
+EXP_DELV_DATE	Expected delivery date as per the shipment schedule.	DATE
+ACT_DELV_DATE	Actual delivery date when the shipment was received.	DATE
+DELAY_REASON	Reason for any delay in delivery, if applicable.	VARCHAR(50)
+INVOICE_ID	Identifier for the invoice associated with the shipment.	NUMBER
+
+
+mysql
+===================
+CREATE TABLE vendor_shipments (
+    SHIP_ID INT PRIMARY KEY,
+    VENDOR_ID INT,
+    SHIP_MODE VARCHAR(10),
+    SHIP_DATE DATE,
+    VENDOR_GVM_ID INT,
+    FACILITY_ID INT,
+    EXP_DELV_DATE DATE,
+    ACT_DELV_DATE DATE,
+    DELAY_REASON VARCHAR(50),
+    INVOICE_ID INT
+);
+
+
+CREATE TABLE vendor_commitments (
+    COMMIT_ID INT PRIMARY KEY,
+    VENDOR_ID INT,
+    SKU_ID VARCHAR(30),
+    SKU_QTY INT,
+    LOC_ID INT,
+    SHIP_ID INT,
+    LOC_NM VARCHAR(50),
+    DATE DATE
+);
+
+
+CREATE TABLE invoices (
+    INVOICE_ID     INT NOT NULL PRIMARY KEY,
+    INVOICE_DATE   DATE,
+    INVOICE_STATUS VARCHAR(30),
+    INVOICE_AMT    VARCHAR(20),
+    CUST_ID        INT,
+    VENDOR_ID      INT
+);
+
+CREATE TABLE vendor_inv_request(
+    ->     ORDER_ID INT NOT NULL,
+    ->     VENDOR_ID INT NOT NULL,
+    ->     SHIP_ID INT,
+    ->     SKU_ID VARCHAR(30),
+    ->     ORD_QTY INT,
+    ->     PAYM_ID INT,
+    ->     CREATE_DT DATE,
+    ->     FACILITY_ID INT,
+    ->     INVOICE_ID INT,
+    ->     PRIMARY KEY (ORDER_ID, VENDOR_ID)
+    -> );
+	
+	
+	
+CREATE TABLE vendor_cost(
+    COST_ID INT NOT NULL,
+    VENDOR_ID INT NOT NULL,
+    AVG_UNIT_PRICE DECIMAL(10, 2),
+    CATEGORY VARCHAR(50),
+    MARKET_AVG_PRICE DECIMAL(10, 2),
+    IS_VOLUME_DISC_AVAILABLE_FLG CHAR(1),
+    PRIMARY KEY (COST_ID, VENDOR_ID)
+);
+
+
+
+CREATE TABLE vendor_sky_pricing(
+    SKU_ID VARCHAR(30) NOT NULL,
+    VENDOR_ID INT,
+    BASE_COST_AMT DECIMAL(10, 2),
+    MKT_COST DECIMAL(10, 2),
+    TAX_AMT DECIMAL(10, 2),
+    DISCOUNT_AMT DECIMAL(10, 2),
+    PRIMARY KEY (SKU_ID)
+);
+
+
+ubuntu@ip-172-31-4-41:~/kafka_2.13-3.9.0$ /home/ubuntu/kafka_2.13-3.9.0/bin/kafka-topics.sh --create --topic VENDOR_SHIPMENTS --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic VENDOR_SHIPMENTS.
+
+~/kafka_2.13-3.9.0$ /home/ubuntu/kafka_2.13-3.9.0/bin/kafka-topics.sh --create --topic VENDOR_COMMITMENTS --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+~/kafka_2.13-3.9.0$ /home/ubuntu/kafka_2.13-3.9.0/bin/kafka-topics.sh --create --topic INVOICES --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+/home/ubuntu/kafka_2.13-3.9.0/bin/kafka-topics.sh --create --topic VENDOR_INVENTORY_REQUESTS --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+/home/ubuntu/kafka_2.13-3.9.0/bin/kafka-topics.sh --create --topic VENDOR_COSTS --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+/home/ubuntu/kafka_2.13-3.9.0/bin/kafka-topics.sh --create --topic VENDOR_SKU_PRICES --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+/home/ubuntu/kafka_2.13-3.9.0/bin/kafka-console-consumer.sh --topic INVOICES --from-beginning --bootstrap-server localhost:9092  --group invoices_groupr
+
+
+
+postgres
+=====================
+CREATE TABLE vendor_shipments (
+    cc_ship_id SERIAL PRIMARY KEY
+    SHIP_ID INTEGER,
+    VENDOR_ID INTEGER,
+    SHIP_MODE VARCHAR(10),
+    SHIP_DATE DATE,
+    VENDOR_GVM_ID INTEGER,
+    FACILITY_ID INTEGER,
+    EXP_DELV_DATE DATE,
+    ACT_DELV_DATE DATE,
+    DELAY_REASON VARCHAR(50),
+    INVOICE_ID INTEGER
+);
+
+
+
+CREATE TABLE vendor_commitments (
+    cc_commit_id SERIAL PRIMARY KEY
+    COMMIT_ID INTEGER,
+    VENDOR_ID INTEGER,
+    SKU_ID VARCHAR(30),
+    SKU_QTY INTEGER,
+    LOC_ID INTEGER,
+    SHIP_ID INTEGER,
+    LOC_NM VARCHAR(50),
+    DATE DATE
+);
+
+
+CREATE TABLE invoices (
+    cc_invoice_id SERIAL PRIMARY KEY
+    INVOICE_ID     INT NOT NULL,
+    INVOICE_DATE   DATE,
+    INVOICE_STATUS VARCHAR(30),
+    INVOICE_AMT    VARCHAR(20),
+    CUST_ID       INTEGER,
+    VENDOR_ID      INT
+);
+
+vendor_db=> CREATE TABLE vendor_inv_request(
+    cc_order_id SERIAL PRIMARY KEY
+    ORDER_ID INTEGER NOT NULL,
+    VENDOR_ID INTEGER NOT NULL,
+    SHIP_ID INTEGER,
+    SKU_ID VARCHAR(30),
+    ORD_QTY INTEGER,
+    PAYM_ID INTEGER,
+    CREATE_DT DATE,
+    FACILITY_ID INTEGER,
+    INVOICE_ID INTEGER,
+    PRIMARY KEY (ORDER_ID, VENDOR_ID)
+);
+
+
+CREATE TABLE vendor_cost(
+    CC_COST_ID SERIAL PRIMARY KEY,
+    COST_ID INT NOT NULL,
+    VENDOR_ID INT NOT NULL,
+    AVG_UNIT_PRICE DECIMAL(10, 2),
+    CATEGORY VARCHAR(50),
+    MARKET_AVG_PRICE DECIMAL(10, 2),
+    IS_VOLUME_DISC_AVAILABLE_FLG CHAR(1),
+    CONSTRAINT pk_vendor_cost UNIQUE (CC_COST_ID)
+);
+
+
+
+CREATE TABLE vendor_sku_pricing(
+    CC_SKU_ID SERIAL PRIMARY KEY,
+    SKU_ID VARCHAR(30) NOT NULL,
+    VENDOR_ID INT,
+    BASE_COST_AMT DECIMAL(10, 2),
+    MKT_COST DECIMAL(10, 2),
+    TAX_AMT DECIMAL(10, 2),
+    DISCOUNT_AMT DECIMAL(10, 2)
+);
+
+
+
+ALTER TABLE vendor_shipments ADD COLUMN cc_ship_id SERIAL PRIMARY KEY;
+ALTER TABLE vendor_commitments ADD COLUMN cc_commit_id SERIAL PRIMARY KEY;
+ALTER TABLE invoices ADD COLUMN cc_invoice_id SERIAL PRIMARY KEY;
+ALTER TABLE vendor_inv_requests ADD COLUMN cc_order_id SERIAL PRIMARY KEY;
