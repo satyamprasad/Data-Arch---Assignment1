@@ -166,6 +166,39 @@ services:
       tail -f /dev/null
       "
 
+hive-metastore:
+  image: bitnami/hive-metastore:latest
+  container_name: hive-metastore
+  environment:
+    - HIVE_METASTORE_PORT_NUMBER=9083
+    - HIVE_METASTORE_DATABASE_HOST=metastore-db
+    - HIVE_METASTORE_DATABASE_PORT_NUMBER=3306
+    - HIVE_METASTORE_DATABASE_NAME=metastore
+    - HIVE_METASTORE_DATABASE_USER=metastore
+    - HIVE_METASTORE_DATABASE_PASSWORD=metastore
+  depends_on:
+    - metastore-db
+  networks:
+    iceberg_net:
+  ports:
+    - 9083:9083
+
+
+metastore-db:
+  image: mysql:5.7
+  container_name: metastore-db
+  environment:
+    - MYSQL_ROOT_PASSWORD=root
+    - MYSQL_DATABASE=metastore
+    - MYSQL_USER=metastore
+    - MYSQL_PASSWORD=metastore
+  networks:
+    iceberg_net:
+  ports:
+    - 3306:3306
+
+
+
 networks:
   iceberg_net:
 
