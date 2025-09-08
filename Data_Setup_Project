@@ -278,3 +278,6 @@ INSERT INTO vendor_sku_pricing(SKU_ID, VENDOR_ID, BASE_COST_AMT, MKT_COST, TAX_A
 INSERT INTO vendor_sku_pricing(SKU_ID, VENDOR_ID, BASE_COST_AMT, MKT_COST, TAX_AMT, DISCOUNT_AMT) VALUES ('SKU_6', 81, 7.51, 11.19, 29.5, 17.85);
 INSERT INTO vendor_sku_pricing(SKU_ID, VENDOR_ID, BASE_COST_AMT, MKT_COST, TAX_AMT, DISCOUNT_AMT) VALUES ('SKU_7', 93, 33.75, 39.82, 40.22, 38.13);
 INSERT INTO vendor_sku_pricing(SKU_ID, VENDOR_ID, BASE_COST_AMT, MKT_COST, TAX_AMT, DISCOUNT_AMT) VALUES ('SKU_8', 93, 32.47, 47.84, 31.79, 17.71);
+
+iceberg_jar = os.path.expanduser("~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.5.2.jar")
+.config("spark.jars", iceberg_jar)
