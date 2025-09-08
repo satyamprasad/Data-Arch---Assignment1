@@ -281,3 +281,4 @@ INSERT INTO vendor_sku_pricing(SKU_ID, VENDOR_ID, BASE_COST_AMT, MKT_COST, TAX_A
 
 iceberg_jar = os.path.expanduser("~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.5.2.jar")
 .config("spark.jars", iceberg_jar)
+~/spark-3.5.6-bin-hadoop3/bin/spark-submit setup_vendor_catalog.py
