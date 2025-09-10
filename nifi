@@ -223,3 +223,132 @@ You should see:
   3 | Amit   |  40 | MUMBAI
   4 | Neha   |  25 | PUNE
 
+
+/*********************************************************************************10 Sept
+
+
+
+sudo mysql
+
+-------------------Check the configuration--------
+SELECT @@hostname AS hostname;
+SHOW VARIABLES LIKE 'port';
+SHOW VARIABLES LIKE 'bind_address';
+SHOW VARIABLES LIKE 'socket';
+SHOW VARIABLES LIKE 'datadir';
+SELECT VERSION();
+
+---------Output should be as below--------------------------
+mysql> SELECT @@hostname AS hostname;
++-----------------+
+| hostname        |
++-----------------+
+| ip-172-31-11-29 |
++-----------------+
+1 row in set (0.00 sec)
+
+mysql> SHOW VARIABLES LIKE 'port';
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| port          | 3306  |
++---------------+-------+
+1 row in set (0.01 sec)
+
+mysql> SHOW VARIABLES LIKE 'bind_address';
++---------------+-----------+
+| Variable_name | Value     |
++---------------+-----------+
+| bind_address  | 127.0.0.1 |
++---------------+-----------+
+1 row in set (0.00 sec)
+
+mysql> SHOW VARIABLES LIKE 'socket';
++---------------+-----------------------------+
+| Variable_name | Value                       |
++---------------+-----------------------------+
+| socket        | /var/run/mysqld/mysqld.sock |
++---------------+-----------------------------+
+1 row in set (0.00 sec)
+
+mysql> SHOW VARIABLES LIKE 'datadir';
++---------------+-----------------+
+| Variable_name | Value           |
++---------------+-----------------+
+| datadir       | /var/lib/mysql/ |
++---------------+-----------------+
+1 row in set (0.00 sec)
+
+mysql> SELECT VERSION();
++-------------------------+
+| VERSION()               |
++-------------------------+
+| 8.0.42-0ubuntu0.22.04.1 |
++-------------------------+
+1 row in set (0.00 sec)
+--------------------------------- End ---------------
+
+
+CREATE DATABASE IF NOT EXISTS ingest_db;
+
+DROP USER IF EXISTS 'nifi_user';
+
+CREATE USER 'nifi_user' IDENTIFIED BY 'Password@!23';
+GRANT SELECT, INSERT, UPDATE, DELETE ON ingest_db.* TO 'nifi_user';
+FLUSH PRIVILEGES;
+
+CREATE DATABASE IF NOT EXISTS ingest_db;
+USE ingest_db;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT ,
+  name VARCHAR(255),
+  email VARCHAR(255),
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+----------
+
+sudo apt install -y libmariadb-java
+This installs the driver JAR into /usr/share/java/mariadb-java-client.jar.
+
+Then in NiFi DBCPConnectionPool set:
+
+Database Driver Location(s)
+/usr/share/java/mariadb-java-client.jar
+
+Database Driver Class Name
+org.mariadb.jdbc.Driver
+
+Database Connection URL (works for MySQL as well):
+
+jdbc:mariadb://127.0.0.1:3306/ingest_db
+
+
+Database Driver Class Name
+
+org.mariadb.jdbc.Driver
+
+
+Database Driver Location(s)
+
+/usr/share/java/mariadb-java-client.jar
+
+
+sudo chown -R nifi:nifi /home/ubuntu/Desktop/Shared/Santosh/django/django_demo
+
+ls -ld /home/ubuntu/Desktop/Shared/Santosh/django/django_demo/django_demo/__pycache__
+
+sudo chmod -R a+rx /home/ubuntu/Desktop/Shared/Santosh/django/django_demo
+
+
+ps -eo user,pid,cmd | grep -i nifi | grep -v grep || echo "NiFi process not found via ps"
+
+
+
+
+name,email
+alok,a@a.com
+
+
