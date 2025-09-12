@@ -352,3 +352,38 @@ name,email
 alok,a@a.com
 
 
+curl -fsSL https://pgp.mongodb.com/server-8.0.pub | gpg --dearmor | sudo tee /usr/share/keyrings/mongodb-server-8.0.gpg > /dev/null
+/*************************. Install MongoDB on Ubuntu ***************************
+
+cat /etc/lsb-release //ubuntu version
+
+sudo apt-get install gnupg curl (Not required)
+ 	
+curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+   
+sudo apt-get update
+   
+sudo apt-get install -y mongodb-org
+
+sudo systemctl start mongod
+
+sudo systemctl daemon-reload
+
+sudo systemctl status mongod
+
+sudo systemctl enable mongod
+
+sudo systemctl restart mongod
+
+mongosh 
+
+help
+db.help()
+db.tablename.help
+db. (tab tab)
+dp.tablename. (tab tab)
+
+
+db.createCollection("incidents");
