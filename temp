@@ -39,16 +39,38 @@ SparkSession available as 'spark'.
 |  2|Alka|
 +---+----+
 
-$SPARK_HOME/sbin/start-thriftserver.sh \
-  --master local[*] \
-  --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
-  --conf spark.sql.catalog.vendor_catalog=org.apache.iceberg.spark.SparkCatalog \
-  --conf spark.sql.catalog.vendor_catalog.type=hadoop \
-  --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse
-beeline -u "jdbc:hive2://localhost:10000" -e "SELECT * FROM vendor_catalog.vendor_db.demo"
+from org.apache.nifi.processor.io import StreamCallback
+from java.io import OutputStreamWriter
+from pyspark.sql import SparkSession
+import csv
 
-beeline -u "jdbc:hive2://localhost:10000/default;catalog=vendor_catalog" -e "SHOW TABLES IN vendor_db"
+# Create SparkSession with Iceberg catalog
+spark = SparkSession.builder \
+    .appName("NiFiIcebergCSV") \
+    .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
+    .config("spark.sql.catalog.vendor_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+    .config("spark.sql.catalog.vendor_catalog.type", "hadoop") \
+    .config("spark.sql.catalog.vendor_catalog.warehouse", "/tmp/warehouse") \
+    .getOrCreate()
 
+# Query your table
+df = spark.sql("SELECT * FROM vendor_catalog.vendor_db.demo")
+
+# Write CSV to FlowFile
+flowFile = session.get()
+if flowFile is not None:
+    def write_csv(outputStream):
+        writer = OutputStreamWriter(outputStream)
+        csv_writer = csv.writer(writer)
+        # Write header
+        csv_writer.writerow(df.columns)
+        # Write data rows
+        for row in df.toLocalIterator():  # efficient for large tables
+            csv_writer.writerow([row[c] for c in df.columns])
+        writer.flush()
+
+    flowFile = session.write(flowFile, write_csv)
+    session.transfer(flowFile, REL_SUCCESS)
 CREATE TABLE vendor_catalog.vendor_db.demo2 (
   id INT,
   name STRING
