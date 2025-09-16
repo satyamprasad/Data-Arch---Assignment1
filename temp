@@ -48,3 +48,9 @@ $SPARK_HOME/sbin/start-thriftserver.sh \
 beeline -u "jdbc:hive2://localhost:10000" -e "SELECT * FROM vendor_catalog.vendor_db.demo"
 
 beeline -u "jdbc:hive2://localhost:10000/default;catalog=vendor_catalog" -e "SHOW TABLES IN vendor_db"
+
+CREATE TABLE vendor_catalog.vendor_db.demo2 (
+  id INT,
+  name STRING
+) USING ICEBERG
+LOCATION 'hdfs:///tmp/warehouse/vendor_db/demo2';
