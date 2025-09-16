@@ -46,3 +46,5 @@ $SPARK_HOME/sbin/start-thriftserver.sh \
   --conf spark.sql.catalog.vendor_catalog.type=hadoop \
   --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse
 beeline -u "jdbc:hive2://localhost:10000" -e "SELECT * FROM vendor_catalog.vendor_db.demo"
+
+beeline -u "jdbc:hive2://localhost:10000/default;catalog=vendor_catalog" -e "SHOW TABLES IN vendor_db"
