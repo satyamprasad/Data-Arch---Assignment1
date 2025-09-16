@@ -11,3 +11,11 @@ f1d15121b2ec   minio/minio                   "/usr/bin/docker-ent…"   59 minut
 
 
 https://repo1.maven.org/maven2/org/apache/hive/hive-jdbc/2.3.9/hive-jdbc-2.3.9-standalone.jar
+
+
+
+./bin/spark-sql --master local \
+  --conf spark.sql.catalog.vendor_catalog=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.vendor_catalog.type=hadoop \
+  --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse \
+  -e "SELECT * FROM vendor_catalog.vendor_db.demo;"
