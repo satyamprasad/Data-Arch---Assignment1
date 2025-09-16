@@ -6,8 +6,8 @@ fin_ops.svc_Acct_dtls
 
 =================Install JARS========================
 spark-shell --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.5.2
-~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.5.2.jar
-mv iceberg-spark-runtime-3.5_2.12-1.5.2.jar ~/.ivy2/jars/
+~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.13-1.5.2.jar
+mv iceberg-spark-runtime-3.5_2.13-1.5.2.jar ~/.ivy2/jars/
 =====================================================
 Vendor Commitments (T)
 
