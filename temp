@@ -75,3 +75,8 @@ LOCATION 'hdfs:///tmp/warehouse/vendor_db/demo2';
   --conf spark.sql.catalog.vendor_catalog.type=hadoop \
   --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse \
   /home/ubuntu/nifi/scripts/run_iceberg_query.py
+
+
+~/spark-3.5.6-bin-hadoop3/bin/spark-submit \
+  --jars ~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.5.2.jar \
+  ~/nifi/scripts/run_iceberg_query.py
