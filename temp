@@ -39,3 +39,4 @@ SparkSession available as 'spark'.
 |  2|Alka|
 +---+----+
 
+beeline -u "jdbc:hive2://localhost:10000" -e "SELECT * FROM vendor_catalog.vendor_db.demo"
