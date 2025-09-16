@@ -76,3 +76,12 @@ CREATE TABLE vendor_catalog.vendor_db.demo2 (
   name STRING
 ) USING ICEBERG
 LOCATION 'hdfs:///tmp/warehouse/vendor_db/demo2';
+
+
+~/spark-3.5.6-bin-hadoop3/bin/spark-submit \
+  --jars ~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.5.2.jar \
+  --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+  --conf spark.sql.catalog.vendor_catalog=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.vendor_catalog.type=hadoop \
+  --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse \
+  /home/ubuntu/nifi/scripts/run_iceberg_query.py
