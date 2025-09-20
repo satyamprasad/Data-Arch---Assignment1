@@ -122,3 +122,20 @@ DataFrame[lh_id: int, id: int, name: string]
 +-----+---+----+
 +-----+---+----+
 
+from pyspark.sql import functions as F
+from pyspark.sql import Window
+
+# Read CSV
+df = spark.read.option("header", "true").csv("demo.csv")
+
+# Cast id column to int
+df = df.withColumn("id", F.col("id").cast("int"))
+
+# Add auto-increment style column
+df = df.withColumn("lh_id", F.row_number().over(Window.orderBy("id")))
+
+# Show before writing
+df.show()
+
+# Append to Iceberg table
+df.writeTo("vendor_catalog.vendor_db.demo").append()
