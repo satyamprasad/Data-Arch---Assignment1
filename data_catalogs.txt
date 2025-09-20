@@ -229,3 +229,10 @@ Let me know if you want more details or a comparison with other data catalog too
 [https://atlas.apache.org/](https://atlas.apache.org/)
 
 Let me know if you need setup instructions or integration examples!
+
+~/spark-3.5.6-bin-hadoop3/bin/pyspark \
+  --jars ~/.ivy2/jars/org.apache.iceberg_iceberg-spark-runtime-3.5_2.12-1.5.2.jar \
+  --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+  --conf spark.sql.catalog.vendor_catalog=org.apache.iceberg.spark.SparkCatalog \
+  --conf spark.sql.catalog.vendor_catalog.type=hadoop \
+  --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse
