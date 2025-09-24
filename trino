@@ -297,4 +297,4 @@ Remove data and databases:
 sudo mysql -u root -e "DROP DATABASE demo_mysql;"
 sudo mongo --eval "db.getSiblingDB('demo_mongodb').dropDatabase()"
 
-
+wget https://repo1.maven.org/maven2/io/trino/trino-cli/476/trino-cli-476-executable.jar -O trino
