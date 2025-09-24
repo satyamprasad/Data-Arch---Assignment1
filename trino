@@ -1,0 +1,299 @@
+
+sudo apt update
+sudo apt install -y wget curl unzip uuid-runtime
+
+
+wget https://repo1.maven.org/maven2/io/trino/trino-server/389/trino-server-389.tar.gz
+
+mkdir -p /home/ubuntu/trino
+tar xzf trino-server-389.tar.gz -C /home/ubuntu/trino --strip-components=1
+
+
+mkdir -p /home/ubuntu/trino/etc/catalog
+mkdir -p /home/ubuntu/trino-data
+----- Append the following setting into the respective files ------
+
+echo "node.environment=production" > /home/ubuntu/trino/etc/node.properties
+echo "node.id=$(uuidgen)" >> /home/ubuntu/trino/etc/node.properties
+echo "node.data-dir=/home/ubuntu/trino-data" >> /home/ubuntu/trino/etc/node.properties
+
+echo "-server" > /home/ubuntu/trino/etc/jvm.config
+echo "-Xmx2G" >> /home/ubuntu/trino/etc/jvm.config
+
+echo "coordinator=true" > /home/ubuntu/trino/etc/config.properties
+echo "node-scheduler.include-coordinator=true" >> /home/ubuntu/trino/etc/config.properties
+echo "http-server.http.port=9090" >> /home/ubuntu/trino/etc/config.properties
+echo "discovery-server.enabled=true" >> /home/ubuntu/trino/etc/config.properties
+echo "discovery.uri=http://localhost:9090" >> /home/ubuntu/trino/etc/config.properties
+
+echo "io.trino=INFO" > /home/ubuntu/trino/etc/log.properties
+
+---- Install and setup Trino----
+
+sudo chown -R ubuntu:ubuntu /home/ubuntu/trino /home/ubuntu/trino-data
+
+#sudo chown -R $(whoami):$(whoami) /home/ubuntu/trino /home/ubuntu/trino-data
+mkdir -p /home/ubuntu/trino/var/log
+
+/home/ubuntu/trino/bin/launcher start
+
+#If you get the Python realted issue check if the python installed 
+whereis python
+which python3
+
+If python3 is present creat link to with python 
+
+sudo ln -s /usr/bin/python3 /usr/bin/python
+
+
+------------ Append the propertices duplicate (show as group)-----------
+
+cat > /home/ubuntu/trino/etc/node.properties <<EOF
+node.environment=production
+node.id=$(uuidgen)
+node.data-dir=/home/ubuntu/trino-data
+EOF
+
+cat > /home/ubuntu/trino/etc/jvm.config <<EOF
+-server
+-Xmx2G
+EOF
+
+cat > /home/ubuntu/trino/etc/config.properties <<EOF
+coordinator=true
+node-scheduler.include-coordinator=true
+http-server.http.port=9090
+discovery-server.enabled=true
+discovery.uri=http://localhost:9090
+EOF
+
+echo "io.trino=INFO" > /home/ubuntu/trino/etc/log.properties
+------------------------------------------------------------------------
+
+
+#Just to test if mysql is working 
+
+sudo mysql 
+
+--------------------- Install and creat collection in MangoDB----------
+curl -fsSL https://www.mongodb.org/static/pgp/server-6.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb.gpg
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+
+sudo apt update
+sudo apt install -y mongodb-org
+sudo systemctl start mongod
+sudo systemctl enable mongod
+sudo systemctl status mongod
+mongosh
+
+# 1. Create and switch to demo DB
+use demo_mongodb;
+
+# 2. Create a sample collection with documents
+
+use demo_mongodb
+db.products.insertMany([
+    { product_id: 101, product_name: 'Laptop', price: 1200, user_id: 1 },
+    { product_id: 102, product_name: 'Mouse', price: 25, user_id: 1 },
+    { product_id: 103, product_name: 'Keyboard', price: 75, user_id: 2 },
+    { product_id: 104, product_name: 'Monitor', price: 300, user_id: 3 },
+    { product_id: 105, product_name: 'Laptop', price: 1500, user_id: 4 }
+]);
+
+# Create an index on status for pushdown efficiency
+#db.demo_mongodb.createIndex({ status: 1 });
+
+# Verify data
+db.demo_mongodb.find();
+---------------------------------------
+
+
+# Start the services
+sudo systemctl start mysql
+sudo systemctl start mongodb
+sudo systemctl enable mysql
+sudo systemctl enable mongodb
+
+Step 2: Configure Trino Connectors
+Next, you need to create a catalog file for each database so Trino knows how to connect to them.
+
+Create the MySQL catalog file:
+
+cat > /home/ubuntu/trino/etc/catalog/mysql.properties <<EOF
+connector.name=mysql
+connection-url=jdbc:mysql://localhost:3306
+connection-user=root
+connection-password=
+EOF
+
+Note: The password field is left blank for a local test setup. 
+
+Create the MongoDB catalog file:
+
+cat > /home/ubuntu/trino/etc/catalog/mongodb.properties <<EOF
+connector.name=mongodb
+mongodb.connection-url=mongodb://localhost:27017
+EOF
+
+Restart Trino to load the new connectors:
+
+/home/ubuntu/trino/bin/launcher restart
+
+# Populate Databases with Demo Data : We'll create a users table in MySQL and a products collection in MongoDB. We will then join these two tables later.
+
+Add data and user to MySQL:
+
+sudo mysql -u root
+
+# Now creating the database and table
+
+CREATE DATABASE demo_mysql;
+
+USE demo_mysql;
+CREATE TABLE users (
+    user_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    city VARCHAR(50)
+);
+
+INSERT INTO users VALUES (1, 'Alice', 'New York');
+INSERT INTO users VALUES (2, 'Bob', 'London');
+INSERT INTO users VALUES (3, 'Charlie', 'Tokyo');
+INSERT INTO users VALUES (4, 'David', 'New York');
+
+# Create a user and set a password
+
+CREATE USER 'trino_user'@'localhost' IDENTIFIED BY 'trino_password';
+
+# Grant the new user all privileges on the demo database
+
+GRANT ALL PRIVILEGES ON demo_mysql.* TO 'trino_user'@'localhost';
+FLUSH PRIVILEGES;
+
+
+
+Add data to MongoDB:
+Log in to the MongoDB shell and run these commands.
+
+mongosh
+
+# At the mongodb prompt:
+
+
+Connect to the Trino CLI:
+
+trino --server http://localhost:9090
+
+#Run an EXPLAIN query with a WHERE clause:
+
+EXPLAIN SELECT name FROM mysql.demo_mysql.users WHERE user_id = 2;
+
+Note: In the output of this command, you will see a TableScan operator that includes WHERE (user_id = 2). This shows that Trino is pushing the filter down to MySQL, so MySQL does the filtering instead of Trino.
+
+Run a query to see the result:
+
+#Predicate Pushdown This demonstrates how Trino is smart enough to send a filter condition down to the data source, processing less data. We'll use the EXPLAIN command to prove it.
+
+SELECT name FROM mysql.demo_mysql.users WHERE user_id = 2;
+
+Demonstrate Unifying Queries: We'll join the users table from MySQL with the products collection from MongoDB using a single query.
+
+Run the unified JOIN query:
+
+SELECT 
+    u.name,
+    p.product_name,
+    p.price
+FROM
+    mysql.demo_mysql.users u
+JOIN
+    mongodb.demo_mongodb.products p
+ON
+    u.user_id = p.user_id
+WHERE
+    u.city = 'New York';
+
+This query joins the two tables on the user_id column, even though they are in different databases with different underlying data models.
+
+
+The query will return the names of users from New York (from MySQL) and the products they purchased and Price from MongoDB. The results should look like this:
+
+  name   | product_name | price
+---------+--------------+-------
+ Alice   | Laptop       |  1200
+ Alice   | Mouse        |    25
+ David   | Laptop       |  1500
+(3 rows)
+
+This successfully shows a unified query across your data sources!
+
+#Total Price of Products Purchased by a Specific City (with a discount)
+
+SELECT
+    u.city,
+    COUNT(p.product_id) AS total_products,
+    SUM(p.price) AS total_price_before_discount,
+    SUM(p.price) * 0.9 AS total_price_after_discount
+FROM
+    mysql.demo_mysql.users u
+JOIN
+    mongodb.demo_mongodb.products p
+ON
+    u.user_id = p.user_id
+WHERE
+    u.city = 'New York'
+GROUP BY
+    u.city;
+
+#Top 3 Most Expensive Products and Their Buyer
+
+SELECT
+    p.product_name,
+    p.price,
+    u.name AS buyer_name
+FROM
+    mysql.demo_mysql.users u
+JOIN
+    mongodb.demo_mongodb.products p
+ON
+    u.user_id = p.user_id
+ORDER BY
+    p.price DESC
+LIMIT 3;
+
+
+#Average Price of Products Purchased per City
+
+SELECT
+    u.city,
+    AVG(p.price) AS average_product_price
+FROM
+    mysql.demo_mysql.users u
+JOIN
+    mongodb.demo_mongodb.products p
+ON
+    u.user_id = p.user_id
+GROUP BY
+    u.city;
+    
+
+    
+    
+Clean Up (Optional)
+If you want to remove the demo data and configuration, you can follow these steps.
+
+Stop Trino:
+
+/home/ubuntu/trino/bin/launcher stop
+
+Remove catalog files:
+
+sudo rm /home/ubuntu/trino/etc/catalog/mysql.properties
+sudo rm /home/ubuntu/trino/etc/catalog/mongodb.properties
+
+Remove data and databases:
+
+sudo mysql -u root -e "DROP DATABASE demo_mysql;"
+sudo mongo --eval "db.getSiblingDB('demo_mongodb').dropDatabase()"
+
+
