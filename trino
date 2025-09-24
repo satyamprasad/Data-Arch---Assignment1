@@ -105,14 +105,15 @@ db.products.insertMany([
 
 # Verify data
 db.demo_mongodb.find();
+db.products.find()
 ---------------------------------------
 
 
 # Start the services
 sudo systemctl start mysql
-sudo systemctl start mongodb
+sudo systemctl start mongod
 sudo systemctl enable mysql
-sudo systemctl enable mongodb
+sudo systemctl enable mongod
 
 Step 2: Configure Trino Connectors
 Next, you need to create a catalog file for each database so Trino knows how to connect to them.
