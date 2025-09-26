@@ -147,3 +147,9 @@ df.writeTo("vendor_catalog.vendor_db.demo").append()
 --conf spark.sql.catalog.vendor_catalog.type=hadoop \  
 --conf spark.sql.catalog.vendor_catalog.warehouse=/tmp/warehouse \  
 /home/ubuntu/nifi/scripts/IngestToIceberg.py
+
+
+wget https://dl.min.io/client/mc/release/linux-amd64/mc -O mc
+chmod +x mc
+sudo mv mc /usr/local/bin/
+
