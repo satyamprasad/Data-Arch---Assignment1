@@ -1,0 +1,133 @@
+Codeshare logo
+ ShareSign UpLog In
+1
+# Kmean simple clustering 2 dimensional
+2
+1) Unsupervised Learning — K-Means Clustering (2D blobs)
+3
+​
+4
+pip install numpy scikit-learn matplotlib
+5
+​
+6
+# kmeans_demo.py
+7
+import numpy as np
+8
+import matplotlib.pyplot as plt
+9
+from sklearn.datasets import make_blobs
+10
+from sklearn.cluster import KMeans
+11
+​
+12
+# 1) Generate synthetic 2D data with 3 clusters
+13
+X, y_true = make_blobs(
+14
+    n_samples=600, centers=3, cluster_std=1.20, random_state=42
+15
+)
+16
+​
+17
+# 2) Fit K-Means (you choose K)
+18
+kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
+19
+kmeans.fit(X)
+20
+labels = kmeans.labels_
+21
+centers = kmeans.cluster_centers_
+22
+​
+23
+# 3) Plot points colored by predicted cluster + show centers
+24
+plt.figure(figsize=(6, 5))
+25
+plt.scatter(X[:, 0], X[:, 1], c=labels, s=20)
+26
+plt.scatter(centers[:, 0], centers[:, 1], s=200, marker="X")
+27
+plt.title("K-Means Clustering (K=3)")
+28
+plt.xlabel("Feature 1")
+29
+plt.ylabel("Feature 2")
+30
+plt.tight_layout()
+31
+plt.show()
+32
+​
+33
+Supervised Learning — k-Nearest Neighbors (Classification)
+34
+​
+35
+# knn_classification_demo.py
+36
+import numpy as np
+37
+import matplotlib.pyplot as plt
+38
+from sklearn.datasets import make_moons
+39
+from sklearn.neighbors import KNeighborsClassifier
+40
+from sklearn.model_selection import train_test_split
+41
+from sklearn.metrics import accuracy_score
+42
+​
+43
+# 1) Generate labeled 2D data (two interleaving moons)
+44
+X, y = make_moons(n_samples=600, noise=0.25, random_state=42)
+45
+​
+46
+# Train/test split
+47
+X_train, X_test, y_train, y_test = train_test_split(
+48
+    X, y, test_size=0.30, random_state=42, stratify=y
+49
+)
+50
+​
+51
+# 2) Fit k-NN
+52
+knn = KNeighborsClassifier(n_neighbors=5)
+53
+knn.fit(X_train, y_train)
+54
+​
+55
+# 3) Evaluate
+56
+y_pred = knn.predict(X_test)
+57
+acc = accuracy_score(y_test, y_pred)
+58
+print(f"Test accuracy: {acc:.3f}")
+59
+​
+60
+# 4) Plot decision boundary
+61
+# Create a grid over the feature space
+62
+x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
+63
+y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
+
+
+
+
+Hide Ads
