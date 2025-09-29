@@ -1,133 +1,446 @@
-Codeshare logo
- ShareSign UpLog In
-1
 # Kmean simple clustering 2 dimensional
-2
 1) Unsupervised Learning — K-Means Clustering (2D blobs)
-3
-​
-4
+
 pip install numpy scikit-learn matplotlib
-5
-​
-6
+
 # kmeans_demo.py
-7
 import numpy as np
-8
 import matplotlib.pyplot as plt
-9
 from sklearn.datasets import make_blobs
-10
 from sklearn.cluster import KMeans
-11
-​
-12
+
 # 1) Generate synthetic 2D data with 3 clusters
-13
 X, y_true = make_blobs(
-14
     n_samples=600, centers=3, cluster_std=1.20, random_state=42
-15
 )
-16
-​
-17
+
 # 2) Fit K-Means (you choose K)
-18
 kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
-19
 kmeans.fit(X)
-20
 labels = kmeans.labels_
-21
 centers = kmeans.cluster_centers_
-22
-​
-23
+
 # 3) Plot points colored by predicted cluster + show centers
-24
 plt.figure(figsize=(6, 5))
-25
 plt.scatter(X[:, 0], X[:, 1], c=labels, s=20)
-26
 plt.scatter(centers[:, 0], centers[:, 1], s=200, marker="X")
-27
 plt.title("K-Means Clustering (K=3)")
-28
 plt.xlabel("Feature 1")
-29
 plt.ylabel("Feature 2")
-30
 plt.tight_layout()
-31
 plt.show()
-32
-​
-33
+
 Supervised Learning — k-Nearest Neighbors (Classification)
-34
-​
-35
+
 # knn_classification_demo.py
-36
 import numpy as np
-37
 import matplotlib.pyplot as plt
-38
 from sklearn.datasets import make_moons
-39
 from sklearn.neighbors import KNeighborsClassifier
-40
 from sklearn.model_selection import train_test_split
-41
 from sklearn.metrics import accuracy_score
-42
-​
-43
+
 # 1) Generate labeled 2D data (two interleaving moons)
-44
 X, y = make_moons(n_samples=600, noise=0.25, random_state=42)
-45
-​
-46
+
 # Train/test split
-47
 X_train, X_test, y_train, y_test = train_test_split(
-48
     X, y, test_size=0.30, random_state=42, stratify=y
-49
 )
-50
-​
-51
+
 # 2) Fit k-NN
-52
 knn = KNeighborsClassifier(n_neighbors=5)
-53
 knn.fit(X_train, y_train)
-54
-​
-55
+
 # 3) Evaluate
-56
 y_pred = knn.predict(X_test)
-57
 acc = accuracy_score(y_test, y_pred)
-58
 print(f"Test accuracy: {acc:.3f}")
-59
-​
-60
+
 # 4) Plot decision boundary
-61
 # Create a grid over the feature space
-62
 x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
-63
 y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
+xx, yy = np.meshgrid(
+    np.linspace(x_min, x_max, 300),
+    np.linspace(y_min, y_max, 300)
+)
+grid = np.c_[xx.ravel(), yy.ravel()]
+Z = knn.predict(grid).reshape(xx.shape)
+
+plt.figure(figsize=(6, 5))
+plt.contourf(xx, yy, Z, alpha=0.25)
+plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, s=20, label="train")
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=20, edgecolor="k", label="test")
+plt.title(f"k-NN Classification (k=5), accuracy={acc:.2f}")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.legend(loc="upper left")
+plt.tight_layout()
+plt.show()
 
 
+3) Supervised Learning — k-Nearest Neighbors (Regression)
+
+# knn_regression_demo.py
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_squared_error
+
+# 1) Generate 1D regression data (noisy sine)
+rng = np.random.RandomState(42)
+X = np.sort(rng.uniform(-3, 3, 200)).reshape(-1, 1)
+y = np.sin(X).ravel() + rng.normal(scale=0.2, size=X.shape[0])
+
+# 2) Fit k-NN regressor
+knnr = KNeighborsRegressor(n_neighbors=8, weights="distance")
+knnr.fit(X, y)
+
+# 3) Predict on a dense grid
+X_test = np.linspace(-3.5, 3.5, 400).reshape(-1, 1)
+y_pred = knnr.predict(X_test)
+
+# 4) Evaluate & plot
+mse = mean_squared_error(y, knnr.predict(X))
+print(f"Train MSE: {mse:.3f}")
+
+plt.figure(figsize=(6, 4))
+plt.scatter(X, y, s=15, label="noisy data")
+plt.plot(X_test, y_pred, linewidth=2, label="kNN prediction")
+plt.title("k-NN Regression (k=8, distance weights)")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend()
+plt.tight_layout()
+plt.show()
 
 
-Hide Ads
+-----------------------------------------Useing real bussiness data---------------------------------
+#Copy the data in the same folder as code for version 1 later you can give the path of the file 
+# kmeans_business.py
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+# 1) Load engineered features
+df = pd.read_csv("customer_features_for_kmeans.csv")
+
+# 2) Choose features for clustering
+feature_cols = [
+    "total_spend","tx_count","recency_days","returns_rate",
+    "share_electronics","share_fashion","share_grocery","share_home","share_beauty",
+    "share_web","share_store","share_app",
+    "tenure_days","is_subscriber"
+]
+X = df[feature_cols].copy()
+
+# 3) Scale (very important for KMeans)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# 4) Fit KMeans (pick K=3 to start; try 4 or 5 too)
+kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
+labels = kmeans.fit_predict(X_scaled)
+
+df["cluster"] = labels
+
+# 5) Quick cluster profiling (medians)
+profile = df.groupby("cluster")[feature_cols].median().round(2)
+print("Cluster profile (medians):")
+print(profile)
+
+# 6) 2D visualization with PCA
+pca = PCA(n_components=2, random_state=42)
+coords = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(7,6))
+plt.scatter(coords[:,0], coords[:,1], c=labels, s=18, alpha=0.8)
+plt.title("Customer Segments (K-Means on engineered features)")
+plt.xlabel("PCA 1")
+plt.ylabel("PCA 2")
+plt.tight_layout()
+plt.show()
+
+# 7) Save labeled dataset
+df.to_csv("customer_features_with_clusters.csv", index=False)
+print("Saved: customer_features_with_clusters.csv")
+
+###################################################################################################################
+----------------------------------------------------using code with lebel on the cluster---------------------------
+# kmeans_business_labeled.py
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+# ---------- 1) Load engineered features ----------
+df = pd.read_csv("customer_features_for_kmeans.csv")
+
+# ---------- 2) Choose features for clustering ----------
+feature_cols = [
+    "total_spend","tx_count","recency_days","returns_rate",
+    "share_electronics","share_fashion","share_grocery","share_home","share_beauty",
+    "share_web","share_store","share_app",
+    "tenure_days","is_subscriber"
+]
+X = df[feature_cols].copy()
+
+# ---------- 3) Scale (very important for KMeans) ----------
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# ---------- 4) Fit KMeans ----------
+K = 3  # try 3 to start; you can change to 4 or 5
+kmeans = KMeans(n_clusters=K, n_init=10, random_state=42)
+labels = kmeans.fit_predict(X_scaled)
+df["cluster"] = labels
+
+# ---------- 5) Quick cluster profiling ----------
+profile = df.groupby("cluster")[feature_cols].median().round(2)
+counts = df["cluster"].value_counts().sort_index()
+print("\nCluster profile (medians):")
+print(profile)
+print("\nCluster counts:")
+print(counts)
+
+# ---------- 6) Assign human-readable segment labels ----------
+# Heuristic:
+# - High value: high total_spend & tx_count, low recency_days, low returns_rate
+# - Regular: middle on these metrics
+# - Price-sensitive / Occasional: low spend & tx_count, high recency_days or higher returns_rate
+#
+# We'll compute a simple score = z(spend) + z(tx_count) - z(recency_days) + (1 - z(returns_rate))
+# Then sort clusters by score and map to names.
+
+def zseries(s: pd.Series) -> pd.Series:
+    # protect against zero std
+    std = s.std(ddof=0)
+    if std == 0:
+        return pd.Series(0.0, index=s.index)
+    return (s - s.mean()) / std
+
+tmp = profile.copy()
+score = (
+    zseries(tmp["total_spend"]) +
+    zseries(tmp["tx_count"]) -
+    zseries(tmp["recency_days"]) +
+    (1 - zseries(tmp["returns_rate"].replace([np.inf, -np.inf], 0).fillna(0)))
+)
+tmp["segment_score"] = score
+
+# Order clusters by score (high → low)
+ordered = tmp["segment_score"].sort_values(ascending=False).index.tolist()
+
+# Default names (3 clusters). Adjust / extend if K changes.
+default_names_for_rank = [
+    "High-Value Loyal",        # best score
+    "Regular Steady",          # middle
+    "Price-Sensitive Occasional"  # lowest score
+]
+# If K ≠ 3, generate generic names but you can customize
+if K != 3:
+    default_names_for_rank = [f"Segment {i+1}" for i in range(K)]
+
+cluster_to_segment = {}
+for rank, cl in enumerate(ordered):
+    name = default_names_for_rank[rank] if rank < len(default_names_for_rank) else f"Segment {rank+1}"
+    cluster_to_segment[cl] = name
+
+df["segment"] = df["cluster"].map(cluster_to_segment)
+
+print("\nCluster → Segment mapping:")
+for cl, name in cluster_to_segment.items():
+    print(f"  Cluster {cl} → {name}")
+
+# Add segment medians:
+profile_labeled = profile.copy()
+profile_labeled["segment"] = profile_labeled.index.map(cluster_to_segment)
+print("\nProfile with segment labels:")
+print(profile_labeled[["segment"] + feature_cols])
+
+# ---------- 7) 2D visualization with PCA (with legend labels) ----------
+pca = PCA(n_components=2, random_state=42)
+coords = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(8, 7))
+
+# Color map per segment (stable order by score)
+colors = ["tab:purple", "tab:green", "tab:orange", "tab:blue", "tab:red", "tab:brown"]
+for i, cl in enumerate(ordered):
+    mask = (df["cluster"] == cl)
+    plt.scatter(
+        coords[mask, 0], coords[mask, 1],
+        s=18, alpha=0.8, color=colors[i % len(colors)],
+        label=f"{cluster_to_segment[cl]} (Cluster {cl}, n={mask.sum()})"
+    )
+
+# Plot cluster centers projected into PCA space
+centers_pca = pca.transform(kmeans.cluster_centers_)
+plt.scatter(centers_pca[:, 0], centers_pca[:, 1], s=220, marker="X", edgecolor="k", color="yellow", label="Cluster centers")
+
+plt.title("Customer Segments (K-Means on engineered features)")
+plt.xlabel("PCA 1")
+plt.ylabel("PCA 2")
+plt.legend(loc="best", frameon=True)
+plt.tight_layout()
+plt.show()
+
+# ---------- 8) Save labeled dataset ----------
+out_path = "customer_features_with_clusters_and_segments.csv"
+df.to_csv(out_path, index=False)
+print(f"\nSaved: {out_path}")
+
+# Optional: save the labeled cluster profile
+profile_labeled.to_csv("cluster_profile_medians_with_segments.csv")
+print("Saved: cluster_profile_medians_with_segments.csv")
+
+
+##################################################################################
+
+
+# knn_customer_segments.py
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay, classification_report
+from sklearn.decomposition import PCA
+
+# 1) Load data ---------------------------------------------------------------
+# Prefer the file with human-readable 'segment'; fall back to 'cluster'
+FILE = "customer_features_with_clusters_and_segments.csv"  # produced by the labeled KMeans script
+df = pd.read_csv(FILE)
+
+# If 'segment' isn't present, use numeric 'cluster' as the label
+target_col = "segment" if "segment" in df.columns else "cluster"
+
+# Choose the same feature set used for clustering (you can tweak)
+feature_cols = [
+    "total_spend","tx_count","recency_days","returns_rate",
+    "share_electronics","share_fashion","share_grocery","share_home","share_beauty",
+    "share_web","share_store","share_app",
+    "tenure_days","is_subscriber"
+]
+
+X = df[feature_cols].copy()
+y_raw = df[target_col].copy()
+
+# Encode string labels to integers if needed
+label_encoder = None
+if y_raw.dtype == "object":
+    label_encoder = LabelEncoder()
+    y = label_encoder.fit_transform(y_raw)
+    classes = label_encoder.classes_
+else:
+    y = y_raw.values
+    classes = np.unique(y).astype(str)
+
+print(f"Training to predict: {target_col}")
+print("Classes:", list(classes))
+
+# 2) Train/Test split --------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42, stratify=y
+)
+
+# 3) Build k-NN pipeline (scaler + classifier) -------------------------------
+# Start with a reasonable k; we’ll show CV for tuning below
+k = 7
+
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("knn", KNeighborsClassifier(n_neighbors=k, weights="distance"))
+])
+
+pipe.fit(X_train, y_train)
+y_pred = pipe.predict(X_test)
+
+# 4) Metrics -----------------------------------------------------------------
+acc = accuracy_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred, average="macro")
+print(f"\nHoldout metrics with k={k}:")
+print(f"  Accuracy: {acc:.3f}")
+print(f"  Macro F1: {f1:.3f}")
+
+print("\nClassification report:")
+if label_encoder is not None:
+    target_names = list(classes)
+else:
+    target_names = [f"class_{c}" for c in classes]
+print(classification_report(y_test, y_pred, target_names=target_names))
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=target_names)
+fig, ax = plt.subplots(figsize=(6,5))
+disp.plot(ax=ax, cmap="Blues", colorbar=False)
+plt.title(f"k-NN Confusion Matrix (k={k})")
+plt.tight_layout()
+plt.show()
+
+# 5) 2D visualization via PCA (predictions) ---------------------------------
+# Reduce features to 2D to visualize decision regions loosely
+pca = PCA(n_components=2, random_state=42)
+X_all_scaled = pipe.named_steps["scaler"].fit_transform(X)  # scale on full for plotting
+coords = pca.fit_transform(X_all_scaled)
+
+# Predict on all points for a colorful map
+y_all_pred = pipe.named_steps["knn"].fit(X_all_scaled, y).predict(X_all_scaled)
+
+plt.figure(figsize=(7,6))
+scatter = plt.scatter(coords[:,0], coords[:,1], c=y_all_pred, s=18, alpha=0.85)
+plt.title(f"k-NN predictions projected with PCA (k={k})")
+plt.xlabel("PCA 1")
+plt.ylabel("PCA 2")
+# Build legend with class names
+# Map each encoded class value to its label (if label_encoder exists)
+if label_encoder is not None:
+    from matplotlib.lines import Line2D
+    handles = []
+    for cls_idx, cls_name in enumerate(classes):
+        handles.append(Line2D([0], [0], marker='o', color='w',
+                              label=cls_name, markerfacecolor=scatter.cmap(scatter.norm(cls_idx)), markersize=8))
+    plt.legend(handles=handles, title="Predicted class")
+plt.tight_layout()
+plt.show()
+
+# 6) (Optional) Hyperparameter search for k ---------------------------------
+# Use cross-validation on the training set to pick a better k
+do_cv = True
+if do_cv:
+    print("\nCross-validating to find a good k...")
+    ks = [1, 3, 5, 7, 9, 11, 15, 21]
+    cv_scores = []
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    for k_try in ks:
+        model = Pipeline([
+            ("scaler", StandardScaler()),
+            ("knn", KNeighborsClassifier(n_neighbors=k_try, weights="distance"))
+        ])
+        scores = cross_val_score(model, X_train, y_train, cv=cv, scoring="accuracy")
+        cv_scores.append(scores.mean())
+        print(f"  k={k_try:>2}  CV accuracy={scores.mean():.3f} (±{scores.std():.3f})")
+
+    best_k = ks[int(np.argmax(cv_scores))]
+    print(f"\nBest k by CV: {best_k}")
+
+    # Refit with best k and re-evaluate on holdout test set
+    best_model = Pipeline([
+        ("scaler", StandardScaler()),
+        ("knn", KNeighborsClassifier(n_neighbors=best_k, weights="distance"))
+    ])
+    best_model.fit(X_train, y_train)
+    y_pred_best = best_model.predict(X_test)
+    acc_best = accuracy_score(y_test, y_pred_best)
+    f1_best = f1_score(y_test, y_pred_best, average="macro")
+    print(f"Holdout metrics with best k={best_k}:  Accuracy={acc_best:.3f}  Macro F1={f1_best:.3f}")
