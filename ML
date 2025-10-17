@@ -1,0 +1,122 @@
+
+mkdir kmeans-demo
+cd kmeans-demo
+
+python3 -m venv .venv
+
+source .venv/bin/activate
+
+##########################################################
+
+# create/activate a venv if you like, then:
+pip install numpy scikit-learn matplotlib
+
+
+# kmeans_demo.py
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+
+# 1) Generate synthetic 2D data with 3 clusters
+X, y_true = make_blobs(
+    n_samples=600, centers=3, cluster_std=1.20, random_state=42
+)
+
+# 2) Fit K-Means (you choose K)
+kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
+kmeans.fit(X)
+labels = kmeans.labels_
+centers = kmeans.cluster_centers_
+
+# 3) Plot points colored by predicted cluster + show centers
+plt.figure(figsize=(6, 5))
+plt.scatter(X[:, 0], X[:, 1], c=labels, s=20)
+plt.scatter(centers[:, 0], centers[:, 1], s=200, marker="X")
+plt.title("K-Means Clustering (K=3)")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.tight_layout()
+plt.show()
+
+#########################################################
+
+# knn_classification_demo.py
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_moons
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# 1) Generate labeled 2D data (two interleaving moons)
+X, y = make_moons(n_samples=600, noise=0.25, random_state=42)
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.30, random_state=42, stratify=y
+)
+
+# 2) Fit k-NN
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train, y_train)
+
+# 3) Evaluate
+y_pred = knn.predict(X_test)
+acc = accuracy_score(y_test, y_pred)
+print(f"Test accuracy: {acc:.3f}")
+
+# 4) Plot decision boundary
+# Create a grid over the feature space
+x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
+y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
+xx, yy = np.meshgrid(
+    np.linspace(x_min, x_max, 300),
+    np.linspace(y_min, y_max, 300)
+)
+grid = np.c_[xx.ravel(), yy.ravel()]
+Z = knn.predict(grid).reshape(xx.shape)
+
+plt.figure(figsize=(6, 5))
+plt.contourf(xx, yy, Z, alpha=0.25)
+plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, s=20, label="train")
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=20, edgecolor="k", label="test")
+plt.title(f"k-NN Classification (k=5), accuracy={acc:.2f}")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.legend(loc="upper left")
+plt.tight_layout()
+plt.show()
+
+# knn_regression_demo.py
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_squared_error
+
+# 1) Generate 1D regression data (noisy sine)
+rng = np.random.RandomState(42)
+X = np.sort(rng.uniform(-3, 3, 200)).reshape(-1, 1)
+y = np.sin(X).ravel() + rng.normal(scale=0.2, size=X.shape[0])
+
+# 2) Fit k-NN regressor
+knnr = KNeighborsRegressor(n_neighbors=8, weights="distance")
+knnr.fit(X, y)
+
+# 3) Predict on a dense grid
+X_test = np.linspace(-3.5, 3.5, 400).reshape(-1, 1)
+y_pred = knnr.predict(X_test)
+
+# 4) Evaluate & plot
+mse = mean_squared_error(y, knnr.predict(X))
+print(f"Train MSE: {mse:.3f}")
+
+plt.figure(figsize=(6, 4))
+plt.scatter(X, y, s=15, label="noisy data")
+plt.plot(X_test, y_pred, linewidth=2, label="kNN prediction")
+plt.title("k-NN Regression (k=8, distance weights)")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend()
+plt.tight_layout()
+plt.show()
