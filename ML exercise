@@ -1,0 +1,196 @@
+# Adjusted for smaller population sample issue
+
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+rng = np.random.default_rng(42)
+
+n_customers = 200
+n_tx = 2000  # adjust lower to ensure within generated rows
+
+countries = ["US", "UK", "DE", "IN", "AU"]
+channels = ["web", "store", "app"]
+categories = ["electronics", "fashion", "grocery", "home", "beauty"]
+start_date = datetime(2023, 1, 1)
+end_date = datetime(2025, 9, 1)
+date_range_days = (end_date - start_date).days
+
+customers = pd.DataFrame({
+    "customer_id": np.arange(10001, 10001 + n_customers),
+    "signup_date": [start_date + timedelta(days=int(rng.integers(0, date_range_days))) for _ in range(n_customers)],
+    "country": rng.choice(countries, size=n_customers, p=[0.45, 0.15, 0.12, 0.20, 0.08]),
+    "age": rng.integers(18, 75, size=n_customers),
+    "is_subscriber": rng.choice([0, 1], size=n_customers, p=[0.7, 0.3]),
+})
+customers["tenure_days"] = (end_date - customers["signup_date"]).dt.days.clip(lower=1)
+
+latent_seg = rng.choice(["value", "regular", "bargain"], size=n_customers, p=[0.25, 0.5, 0.25])
+customers["latent_segment"] = latent_seg
+
+seg_params = {
+    "value":    {"mu_amt": 180, "sigma_amt": 60,  "lambda_tx": 0.25, "ret_p": 0.02, "chan_p":[0.55,0.25,0.20], "cat_p":[0.40,0.15,0.10,0.25,0.10]},
+    "regular":  {"mu_amt": 80,  "sigma_amt": 30,  "lambda_tx": 0.18, "ret_p": 0.04, "chan_p":[0.45,0.30,0.25], "cat_p":[0.15,0.30,0.20,0.20,0.15]},
+    "bargain":  {"mu_amt": 35,  "sigma_amt": 20,  "lambda_tx": 0.12, "ret_p": 0.07, "chan_p":[0.35,0.40,0.25], "cat_p":[0.10,0.20,0.35,0.20,0.15]},
+}
+
+rows = []
+tx_id = 500000
+for _, row in customers.iterrows():
+    seg = row["latent_segment"]
+    params = seg_params[seg]
+    expected = int(params["lambda_tx"] * (row["tenure_days"]/30))
+    n = rng.poisson(max(expected, 1))
+    if n == 0: n = 1
+    for _ in range(n):
+        tx_day = row["signup_date"] + timedelta(days=int(rng.integers(0, row["tenure_days"])))
+        amount = max(2, rng.normal(params["mu_amt"], params["sigma_amt"]))
+        channel = rng.choice(channels, p=params["chan_p"])
+        category = rng.choice(categories, p=params["cat_p"])
+        returned = rng.choice([0,1], p=[1-params["ret_p"], params["ret_p"]])
+        rows.append([
+            tx_id, row["customer_id"], tx_day, channel, category,
+            round(float(amount),2), int(returned), row["country"]
+        ])
+        tx_id += 1
+
+tx = pd.DataFrame(rows, columns=[
+    "tx_id","customer_id","tx_timestamp","channel","category","amount","returned","country"
+])
+
+# Ensure sample size does not exceed available records
+if len(tx) > n_tx:
+    tx = tx.sample(n_tx, random_state=42).sort_values("tx_id").reset_index(drop=True)
+
+# Feature engineering
+today = end_date
+agg = tx.groupby("customer_id").agg(
+    total_spend=("amount","sum"),
+    tx_count=("tx_id","count"),
+    last_tx=("tx_timestamp","max"),
+    returns=("returned","sum"),
+)
+agg["recency_days"] = (today - pd.to_datetime(agg["last_tx"])).dt.days
+agg["returns_rate"] = agg["returns"] / agg["tx_count"]
+
+cat_pivot = (tx.pivot_table(index="customer_id", columns="category", values="amount", aggfunc="sum")
+               .fillna(0))
+cat_share = cat_pivot.div(cat_pivot.sum(axis=1).replace(0,1), axis=0)
+cat_share.columns = [f"share_{c}" for c in cat_share.columns]
+
+chan_pivot = (tx.pivot_table(index="customer_id", columns="channel", values="amount", aggfunc="sum")
+               .fillna(0))
+chan_share = chan_pivot.div(chan_pivot.sum(axis=1).replace(0,1), axis=0)
+chan_share.columns = [f"share_{c}" for c in chan_share.columns]
+
+features = agg.join([cat_share, chan_share])
+features = features.join(customers.set_index("customer_id")[["tenure_days","is_subscriber"]])
+features = features.replace([np.inf, -np.inf], 0).fillna(0)
+features.reset_index(inplace=True)
+
+# Save the files
+tx_path = "/mnt/data/business_transactions.csv"
+cust_path = "/mnt/data/business_customers.csv"
+feat_path = "/mnt/data/customer_features_for_kmeans.csv"
+
+tx.to_csv(tx_path, index=False)
+customers.to_csv(cust_path, index=False)
+features.to_csv(feat_path, index=False)
+
+#######################################################
+
+# kmeans_business.py
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+# Load features
+df = pd.read_csv("customer_features_for_kmeans.csv")
+
+# Select features
+feature_cols = [
+    "total_spend","tx_count","recency_days","returns_rate",
+    "share_electronics","share_fashion","share_grocery","share_home","share_beauty",
+    "share_web","share_store","share_app",
+    "tenure_days","is_subscriber"
+]
+X = df[feature_cols].copy()
+
+# Scale
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# KMeans
+kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
+labels = kmeans.fit_predict(X_scaled)
+df["cluster"] = labels
+
+# Cluster profiles
+profile = df.groupby("cluster")[feature_cols].median().round(2)
+print("Cluster profile (median values):")
+print(profile)
+
+# PCA visualization
+pca = PCA(n_components=2, random_state=42)
+coords = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(7,6))
+plt.scatter(coords[:,0], coords[:,1], c=labels, s=18, alpha=0.8, cmap="Set2")
+plt.title("Customer Segments (K-Means)")
+plt.xlabel("PCA 1")
+plt.ylabel("PCA 2")
+plt.tight_layout()
+plt.show()
+
+df.to_csv("customer_features_with_clusters.csv", index=False)
+print("Saved labeled dataset: customer_features_with_clusters.csv")
+
+###############
+
+# elbow_silhouette.py
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("customer_features_for_kmeans.csv")
+
+feature_cols = [
+    "total_spend","tx_count","recency_days","returns_rate",
+    "share_electronics","share_fashion","share_grocery","share_home","share_beauty",
+    "share_web","share_store","share_app",
+    "tenure_days","is_subscriber"
+]
+
+X_scaled = StandardScaler().fit_transform(df[feature_cols])
+
+ks = range(2, 9)
+inertias, sils = [], []
+
+for k in ks:
+    kmeans = KMeans(n_clusters=k, n_init=10, random_state=42)
+    labels = kmeans.fit_predict(X_scaled)
+    inertias.append(kmeans.inertia_)
+    sils.append(silhouette_score(X_scaled, labels))
+
+fig, ax = plt.subplots(1,2, figsize=(10,4))
+ax[0].plot(ks, inertias, marker="o")
+ax[0].set_title("Elbow Method")
+ax[0].set_xlabel("k")
+ax[0].set_ylabel("Inertia")
+
+ax[1].plot(ks, sils, marker="o")
+ax[1].set_title("Silhouette Score")
+ax[1].set_xlabel("k")
+ax[1].set_ylabel("Score")
+
+plt.tight_layout()
+plt.show()
+
+
+(tx_path, cust_path, feat_path)
