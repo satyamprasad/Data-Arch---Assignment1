@@ -1,0 +1,155 @@
+pip install streamlit 
+pip transformers
+pip pillow 
+pip openai 
+pip torch 
+
+# If you're on CPU-only and see torch warnings, you can still run BLIP (it just uses CPU).
+
+export OPENAI_API_KEY="your_real_key_here"  # or set OPENAI_KEY
+
+streamlit run app.py
+
+# dell_app_ai.py
+import os
+from io import BytesIO
+
+import streamlit as st
+from PIL import Image
+
+# Hugging Face BLIP (image captioning)
+from transformers import BlipProcessor, BlipForConditionalGeneration
+
+# OpenAI (modern client)
+from openai import OpenAI
+
+# --- API key handling (supports either OPENAI_API_KEY or your original OPENAI_KEY) ---
+OPENAI_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY")
+client = OpenAI(api_key=OPENAI_KEY)
+
+# --- Streamlit config ---
+st.set_page_config(page_title="AI-Powered Architecture Analyzer", page_icon="🧭", layout="centered")
+st.title("AI-Powered Image Analyzer — Architecture Diagrams")
+st.caption("Upload an architecture diagram and get a concise, execution-focused review. Keep it simple. 🧩")
+
+# --- Load BLIP model once ---
+@st.cache_resource(show_spinner=True)
+def load_blip_model():
+    processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+    return processor, model
+
+processor, model = load_blip_model()
+
+# --- Helpers ---
+def safe_open_image(uploaded_file) -> Image.Image:
+    image = Image.open(uploaded_file)
+    # Normalize to RGB to avoid mode issues (e.g., PNG with alpha)
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    return image
+
+def generate_caption(image: Image.Image, max_length: int = 120) -> str:
+    inputs = processor(image, return_tensors="pt")
+    outputs = model.generate(**inputs, max_length=max_length, num_beams=5)
+    return processor.decode(outputs[0], skip_special_tokens=True)
+
+def ask_openai(system_prompt: str, user_prompt: str, model: str = "gpt-4o-mini", max_tokens: int = 700) -> str:
+    """
+    Uses Chat Completions for simplicity. Requires a vision-capable model if you pass images,
+    but here we only send text (the BLIP description + your prompts).
+    """
+    if not OPENAI_KEY:
+        raise RuntimeError("Missing API key. Set OPENAI_API_KEY (or OPENAI_KEY).")
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.2,
+        max_tokens=max_tokens,
+    )
+    return resp.choices[0].message.content.strip()
+
+ARCHITECT_SYSTEM_PROMPT = (
+    "You are a seasoned enterprise architect. Be concise, kind, and practical. "
+    "Prioritize simplicity and execution. Avoid over-engineering. "
+    "When you suggest changes, prefer minimal, high-impact tweaks."
+)
+
+def build_feedback_prompt(description: str) -> str:
+    return (
+        "You are reviewing an architecture *diagram* described by this auto-caption:\n\n"
+        f"DESCRIPTION:\n{description}\n\n"
+        "Give a concise review focusing ONLY on:\n"
+        "1) What this diagram is likely about (1–2 lines)\n"
+        "2) Strengths (bullets, max 4)\n"
+        "3) Risks/Gaps (bullets, max 5)\n"
+        "4) Minimal viable improvements (the smallest set of high-impact changes; bullets, max 5)\n"
+        "5) Next steps to execute (3–5 bullets, ordered)\n"
+        "\nKeep it practical. If a point is uncertain, say “assumption:” clearly."
+    )
+
+# --- UI: Upload ---
+uploaded = st.file_uploader("Choose an image file", type=["png", "jpg", "jpeg"])
+
+if uploaded:
+    try:
+        image = safe_open_image(uploaded)
+        st.image(image, caption="Uploaded Diagram", use_column_width=True)
+
+        with st.spinner("Generating a simple description of the diagram (BLIP)…"):
+            description = generate_caption(image)
+
+        st.subheader("Auto Description")
+        st.write(description or "_(No description generated)_")
+
+        # --- Quick feedback block ---
+        st.subheader("Architect Feedback (simple & execution-focused)")
+        if st.button("Generate Feedback"):
+            with st.spinner("Thinking…"):
+                feedback = ask_openai(
+                    ARCHITECT_SYSTEM_PROMPT,
+                    build_feedback_prompt(description),
+                )
+            st.markdown(feedback)
+
+            # Optional: allow download of the feedback as markdown
+            md_bytes = feedback.encode("utf-8")
+            st.download_button(
+                "Download Feedback (.md)",
+                data=md_bytes,
+                file_name="architecture_feedback.md",
+                mime="text/markdown",
+            )
+
+        # --- Q&A about the image ---
+        st.subheader("Ask a Question About the Diagram")
+        user_q = st.text_input("Type your question here (e.g., 'How can I reduce coupling between services?')")
+
+        if user_q:
+            with st.spinner("Answering…"):
+                qa_prompt = (
+                    "Based on the auto description of an architecture diagram below, "
+                    "answer the user's question concisely and suggest one practical, minimal change:\n\n"
+                    f"DESCRIPTION:\n{description}\n\n"
+                    f"QUESTION:\n{user_q}"
+                )
+                answer = ask_openai(ARCHITECT_SYSTEM_PROMPT, qa_prompt, max_tokens=500)
+            st.markdown("**Answer**")
+            st.write(answer)
+
+    except Exception as e:
+        st.error(f"Oops—something went wrong: {e}")
+
+else:
+    st.info("Upload an architecture diagram to begin.")
+
+# --- Footer tips ---
+with st.expander("Tips for best results"):
+    st.markdown(
+        "- Use a clear, high-resolution architecture diagram (PNG/JPG).\n"
+        "- Add short labels in your diagram; BLIP works better with readable text and distinct boxes/lines.\n"
+        "- Keep questions specific (e.g., 'Is data lineage clear?' rather than 'Is it good?')."
+    )
