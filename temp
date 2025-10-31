@@ -153,3 +153,12 @@ wget https://dl.min.io/client/mc/release/linux-amd64/mc -O mc
 chmod +x mc
 sudo mv mc /usr/local/bin/
 
+
+
+spark-sql \
+  --conf spark.sql.catalog.rest=org.apache.iceberg.rest.RESTCatalog \
+  --conf spark.sql.catalog.rest.uri=http://rest:8181 \
+  --conf spark.sql.catalog.rest.io-impl=org.apache.iceberg.aws.s3.S3FileIO \
+  --conf spark.sql.catalog.rest.warehouse=s3://warehouse/ \
+  --conf spark.sql.catalog.rest.s3.endpoint=http://minio:9000
+
